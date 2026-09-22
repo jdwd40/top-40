@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Ridiculous Top 40</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 40rem; padding: 0 1rem; }
+    li { margin: 0.35rem 0; }
+    .meta { color: #666; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>The Ridiculous Top 40</h1>
+  <p class="meta">Core simulation API is running. Full public UI arrives in chunk 2.</p>
+  <h2>Current chart</h2>
+  <ol id="chart"><li>Loading…</li></ol>
+  <script>
+    fetch('/api/chart/current')
+      .then(r => r.json())
+      .then(({ chart }) => {
+        const el = document.getElementById('chart');
+        if (!chart || !chart.entries.length) { el.innerHTML = '<li>No chart yet.</li>'; return; }
+        el.innerHTML = chart.entries.map(e =>
+          `<li><strong>${e.rank}.</strong> ${e.title} — ${e.artist} <span class="meta">(${e.weeklySales.toLocaleString()} sales, peak ${e.peak}${e.lastWeekRank === null ? ', new entry' : ''})</span></li>`
+        ).join('');
+      })
+      .catch(() => { document.getElementById('chart').innerHTML = '<li>Failed to load chart.</li>'; });
+  </script>
+</body>
+</html>

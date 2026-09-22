@@ -1,0 +1,12 @@
+{
+  "name": "ridiculous-top-40",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Daily fictional Top 40 chart simulation (Europe/London chart days)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check.js"
+  }
+}

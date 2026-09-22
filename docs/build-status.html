@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Top 40 — build status</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 42rem; padding: 0 1rem; color: #222; }
+  .bar { background: #eee; border-radius: 4px; height: 1.25rem; overflow: hidden; }
+  .bar > div { background: #2a7; height: 100%; width: 20%; }
+  li { margin: 0.3rem 0; }
+  .todo { color: #a55; }
+</style>
+</head>
+<body>
+  <h1>The Ridiculous Top 40 — build status</h1>
+  <p>Run 20260922-203921-0e8393 · branch factory/20260922-203921-0e8393-top40</p>
+  <div class="bar"><div></div></div>
+  <p><strong>20%</strong> — chunk 1 of 4 complete (simulation core). Progress is
+  measured by finished, verified chunks, not lines of code.</p>
+
+  <h2>Done (verified by <code>npm test</code>)</h2>
+  <ul>
+    <li>Catalogue parser: 100 stable songs, single source of truth</li>
+    <li>Europe/London chart days with a 20:00 boundary, GMT/BST + DST-correct</li>
+    <li>Deterministic release simulation with hidden persisted mojo</li>
+    <li>JSON persistence: atomic rename, write lock, env data-file override</li>
+    <li>Idempotent daily generation with missed-day catch-up</li>
+    <li>HTTP API: public chart endpoints, submissions with validation + rate
+      limit, admin endpoints behind signed HttpOnly SameSite sessions</li>
+    <li>Assert-based tests: dates, sim determinism, ranking, exactly-once,
+      catch-up, submissions, auth, restart persistence</li>
+  </ul>
+
+  <h2>Not started</h2>
+  <ul class="todo">
+    <li>Chunk 2 — public UI (responsive chart, reveal countdown, submission flow)</li>
+    <li>Chunk 3 — admin UI, corrections, preview, deployment config</li>
+    <li>Chunk 4 — browser QA, accessibility, polish</li>
+  </ul>
+</body>
+</html>

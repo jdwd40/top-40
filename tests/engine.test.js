@@ -1,0 +1,108 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { Store, dataFile } = require('../src/state');
+const { generateForDay, catchUp } = require('../src/chart');
+const { getCatalogue } = require('../src/catalogue');
+
+function tmpFile() {
+  return path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'top40-')), 'state.json');
+}
+
+async function makeStore(file, seed = 42) {
+  const store = new Store(file);
+  await store.init();
+  await store.update((s) => { s.seed = seed; s.originDay = '2026-06-15'; s.lastGeneratedDay = null; });
+  return store;
+}
+
+function totals(state) {
+  return {
+    snapshots: state.snapshots.length,
+    lifetime: state.releases.reduce((n, r) => n + r.lifetimeSales, 0),
+    weekly: state.snapshots.reduce((n, s) => n + s.entries.reduce((m, e) => m + e.weeklySales, 0), 0),
+    releases: state.releases.length,
+  };
+}
+
+const NOW_17 = new Date('2026-06-17T21:00:00Z'); // London wall 22:00 BST -> chart day 2026-06-17
+
+test('repeated and direct generation is exactly-once', async () => {
+  const store = await makeStore(tmpFile());
+  await store.update((s) => catchUp(s, NOW_17));
+  const first = totals(store.state);
+  assert.equal(first.snapshots, 3); // 06-15, 06-16, 06-17
+
+  await store.update((s) => catchUp(s, NOW_17)); // whole catch-up again
+  await store.update((s) => catchUp(s, NOW_17));
+  await store.update((s) => generateForDay(s, '2026-06-16')); // direct repeat
+  const after = totals(store.state);
+  assert.deepEqual(after, first, 'no duplicate sales/snapshots');
+  assert.equal(store.state.snapshots.filter(s => s.day === '2026-06-16').length, 1);
+});
+
+test('concurrent catch-up calls behave like a single run', async () => {
+  const file = tmpFile();
+  const single = await makeStore(tmpFile());
+  await single.update((s) => catchUp(s, NOW_17));
+  const expected = totals(single.state);
+
+  const store = await makeStore(file);
+  await Promise.all(Array.from({ length: 6 }, () => store.update((s) => catchUp(s, NOW_17))));
+  assert.deepEqual(totals(store.state), expected, 'serialized idempotent generation');
+});
+
+test('missed-day catch-up fills days in order and preserves published snapshots', async () => {
+  const store = await makeStore(tmpFile());
+  // Simulate a published day 06-16 ahead of the generator cursor.
+  await store.update((s) => {
+    s.snapshots.push({
+      day: '2026-06-16', weekIndex: 1, publishedAt: 'PRESERVED',
+      entries: [{ rank: 1, releaseId: 'REL-0001', songId: 'SONG-001', title: 'T', artist: 'A', weeklySales: 1, weeksOnChart: 1, peak: 1, lastWeekRank: null }],
+    });
+    s.lastGeneratedDay = '2026-06-15';
+  });
+  const results = await store.update((s) => catchUp(s, NOW_17));
+  const created = results.filter(r => r.created).map(r => r.snapshot.day);
+  assert.deepEqual(created, ['2026-06-17'], 'existing day skipped, missing day generated');
+  assert.deepEqual(store.state.snapshots.map(s => s.day), ['2026-06-16', '2026-06-17']);
+  assert.equal(store.state.snapshots[0].publishedAt, 'PRESERVED', 'published snapshot untouched');
+});
+
+test('state survives restart from the same file', async () => {
+  const file = tmpFile();
+  const a = await makeStore(file);
+  await a.update((s) => catchUp(s, NOW_17));
+
+  const b = new Store(file);
+  await b.init();
+  assert.deepEqual(b.state, a.state);
+  // And it is still idempotent after restart.
+  await b.update((s) => catchUp(s, NOW_17));
+  assert.deepEqual(totals(b.state), totals(a.state));
+});
+
+test('no catalogue song appears twice in any chart', async () => {
+  const store = await makeStore(tmpFile());
+  await store.update((s) => catchUp(s, new Date('2026-07-15T21:00:00Z'))); // ~30 chart days
+  const catalogueIds = new Set(getCatalogue().map(s => s.song_id));
+  for (const snap of store.state.snapshots) {
+    const ids = snap.entries.map(e => e.songId).filter(Boolean);
+    assert.equal(new Set(ids).size, ids.length, `day ${snap.day} has no duplicate catalogue songs`);
+    for (const id of ids) assert.ok(catalogueIds.has(id), 'song id from catalogue');
+  }
+});
+
+test('TOP40_DATA_FILE env override picks the data file', () => {
+  const prev = process.env.TOP40_DATA_FILE;
+  process.env.TOP40_DATA_FILE = '/tmp/top40-env-override.json';
+  try {
+    assert.equal(dataFile(), '/tmp/top40-env-override.json');
+  } finally {
+    if (prev === undefined) delete process.env.TOP40_DATA_FILE; else process.env.TOP40_DATA_FILE = prev;
+  }
+});
