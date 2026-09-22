@@ -7,7 +7,7 @@
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 42rem; padding: 0 1rem; color: #222; }
   .bar { background: #eee; border-radius: 4px; height: 1.25rem; overflow: hidden; }
-  .bar > div { background: #2a7; height: 100%; width: 20%; }
+  .bar > div { background: linear-gradient(90deg,#ff4d8d,#ffd32a,#2ed573); height: 100%; width: 60%; }
   li { margin: 0.3rem 0; }
   .todo { color: #a55; }
 </style>
@@ -16,10 +16,11 @@
   <h1>The Ridiculous Top 40 — build status</h1>
   <p>Run 20260922-203921-0e8393 · branch factory/20260922-203921-0e8393-top40</p>
   <div class="bar"><div></div></div>
-  <p><strong>20%</strong> — chunk 1 of 4 complete (simulation core). Progress is
-  measured by finished, verified chunks, not lines of code.</p>
+  <p><strong>60%</strong> — chunks 1–2 of 4 complete (simulation core; public +
+  admin experience). Progress is measured by finished, verified chunks, not
+  lines of code.</p>
 
-  <h2>Done (verified by <code>npm test</code>)</h2>
+  <h2>Done (verified by <code>npm test</code> — 32 suites)</h2>
   <ul>
     <li>Catalogue parser: 100 stable songs, single source of truth</li>
     <li>Europe/London chart days with a 20:00 boundary, GMT/BST + DST-correct</li>
@@ -28,15 +29,23 @@
     <li>Idempotent daily generation with missed-day catch-up</li>
     <li>HTTP API: public chart endpoints, submissions with validation + rate
       limit, admin endpoints behind signed HttpOnly SameSite sessions</li>
+    <li>Snapshot entries persist cumulative sales + re-entry flags</li>
+    <li>Public UI: countdown, full chart table with movement/badges, one-shot
+      40→1 reveal with skip + reduced-motion bypass, history browser,
+      per-song history, all-time list, submission form with expected debut
+      date, offline states, live regions</li>
+    <li>Admin UI: release/mojo editors with reason-required correction log,
+      submission deletion, pure next-chart preview, explicit generate</li>
+    <li>Immutable published snapshots: edits affect future charts only</li>
     <li>Assert-based tests: dates, sim determinism, ranking, exactly-once,
-      catch-up, submissions, auth, restart persistence</li>
+      catch-up, submissions, auth, payload shape, CRUD validation, preview
+      purity, snapshot immutability, route assets</li>
   </ul>
 
   <h2>Not started</h2>
   <ul class="todo">
-    <li>Chunk 2 — public UI (responsive chart, reveal countdown, submission flow)</li>
-    <li>Chunk 3 — admin UI, corrections, preview, deployment config</li>
-    <li>Chunk 4 — browser QA, accessibility, polish</li>
+    <li>Chunk 3 — deployment config under /top40, operational hardening</li>
+    <li>Chunk 4 — browser QA, accessibility audit, polish</li>
   </ul>
 </body>
 </html>

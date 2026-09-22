@@ -9,8 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Store } = require('./src/state');
-const { catchUp, allTime } = require('./src/chart');
-const { currentChartDay, nextBoundary } = require('./src/dates');
+const { catchUp, allTime, previewNext } = require('./src/chart');
+const { currentChartDay, nextBoundary, addDays } = require('./src/dates');
 const auth = require('./src/auth');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -98,6 +98,55 @@ function validateSubmission(body) {
   return { title, artist };
 }
 
+// ---- admin field validation (every field validated, nothing trusted) ----
+const MOJO_FIELDS = ['potential', 'debut', 'climb', 'plateau', 'decline', 'variation'];
+
+function validReason(body) {
+  return typeof body.reason === 'string' && body.reason.trim().length >= 3 && body.reason.length <= 300;
+}
+
+function validateReleasePatch(body) {
+  const patch = {};
+  if (body.title !== undefined) {
+    const t = typeof body.title === 'string' ? body.title.trim() : '';
+    if (!t || t.length > TITLE_MAX) return { error: `title must be a string of 1-${TITLE_MAX} characters` };
+    patch.title = t;
+  }
+  if (body.artist !== undefined) {
+    const a = typeof body.artist === 'string' ? body.artist.trim() : '';
+    if (!a || a.length > TITLE_MAX) return { error: `artist must be a string of 1-${TITLE_MAX} characters` };
+    patch.artist = a;
+  }
+  if (body.mojo !== undefined) {
+    if (typeof body.mojo !== 'object' || body.mojo === null || Array.isArray(body.mojo)) {
+      return { error: 'mojo must be an object of numeric fields 0..1' };
+    }
+    patch.mojo = {};
+    for (const [k, v] of Object.entries(body.mojo)) {
+      if (!MOJO_FIELDS.includes(k)) return { error: `unknown mojo field: ${k}` };
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1) {
+        return { error: `mojo.${k} must be a number between 0 and 1` };
+      }
+      patch.mojo[k] = v;
+    }
+    if (!Object.keys(patch.mojo).length) delete patch.mojo;
+  }
+  if (!Object.keys(patch).length) return { error: 'nothing to update' };
+  if (!validReason(body)) return { error: 'reason (3-300 chars) is required and is recorded in the correction log' };
+  return { patch };
+}
+
+function logCorrection(state, admin, type, refId, reason, before, after) {
+  state.counters.correction = (state.counters.correction || 0) + 1;
+  state.corrections.push({
+    id: state.counters.correction,
+    at: new Date().toISOString(),
+    admin, type, refId,
+    reason: reason.trim(),
+    before, after,
+  });
+}
+
 function serveStatic(req, res, urlPath) {
   let rel = urlPath === '/' ? '/index.html' : urlPath;
   const file = path.normalize(path.join(PUBLIC_DIR, rel));
@@ -156,9 +205,26 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
           state.counters.submission += 1;
           const entry = { id: state.counters.submission, title: v.title, artist: v.artist, submittedAt: new Date().toISOString(), status: 'pending', releaseId: null };
           state.submissions.push(entry);
+          // The submission debuts on the very next chart that gets generated.
+          entry.expectedChartDay = state.lastGeneratedDay ? addDays(state.lastGeneratedDay, 1) : state.originDay;
           return entry;
         });
-        return json(res, 201, { ok: true, submission: { id: sub.id, status: sub.status } });
+        return json(res, 201, { ok: true, submission: { id: sub.id, status: sub.status, expectedChartDay: sub.expectedChartDay } });
+      }
+      if (req.method === 'GET' && p.startsWith('/api/release/') && p.endsWith('/history')) {
+        const releaseId = decodeURIComponent(p.slice('/api/release/'.length, -'/history'.length));
+        return await store.update(async (state) => {
+          const history = [];
+          for (const snap of state.snapshots) {
+            const e = snap.entries.find(en => en.releaseId === releaseId);
+            if (e) history.push({ day: snap.day, rank: e.rank, weeklySales: e.weeklySales, cumulativeSales: e.cumulativeSales ?? null, weeksOnChart: e.weeksOnChart, peak: e.peak });
+          }
+          const rel = state.releases.find(r => r.releaseId === releaseId);
+          const meta = rel ? { title: rel.title, artist: rel.artist } :
+            (history.length ? (() => { const s = state.snapshots.find(sn => sn.entries.some(en => en.releaseId === releaseId)); const e = s.entries.find(en => en.releaseId === releaseId); return { title: e.title, artist: e.artist }; })() : null);
+          if (!meta) return json(res, 404, { error: 'release not found' });
+          return json(res, 200, { releaseId, ...meta, history });
+        });
       }
 
       // ---- admin API (session boundary) ----
@@ -197,6 +263,71 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
         }
         if (req.method === 'GET' && p === '/api/admin/state') {
           return await store.update(async (state) => json(res, 200, { state }));
+        }
+        if (req.method === 'GET' && p === '/api/admin/releases') {
+          return await store.update(async (state) => json(res, 200, {
+            releases: state.releases.map(r => ({
+              releaseId: r.releaseId, kind: r.kind, songId: r.songId, title: r.title, artist: r.artist,
+              releasedDay: r.releasedDay, weeksOnChart: r.weeksOnChart, peak: r.peak,
+              lifetimeSales: r.lifetimeSales, retired: r.retired, mojo: r.mojo,
+            })),
+          }));
+        }
+        if (req.method === 'GET' && p === '/api/admin/submissions') {
+          return await store.update(async (state) => json(res, 200, { submissions: state.submissions }));
+        }
+        if (req.method === 'GET' && p === '/api/admin/corrections') {
+          return await store.update(async (state) => json(res, 200, { corrections: state.corrections.slice().reverse() }));
+        }
+        if (req.method === 'POST' && p === '/api/admin/preview') {
+          return await store.update(async (state) => {
+            await ensureFresh(state);
+            return json(res, 200, previewNext(state));
+          });
+        }
+        const releaseMatch = p.match(/^\/api\/admin\/release\/([^/]+)(\/delete)?$/);
+        if (releaseMatch && (req.method === 'PATCH' || req.method === 'POST')) {
+          const releaseId = decodeURIComponent(releaseMatch[1]);
+          const isDelete = Boolean(releaseMatch[2]);
+          const body = await readJson(req);
+          if (!validReason(body)) return json(res, 400, { error: 'reason (3-300 chars) is required and is recorded in the correction log' });
+          return await store.update(async (state) => {
+            const rel = state.releases.find(r => r.releaseId === releaseId);
+            if (!rel) return json(res, 404, { error: 'release not found' });
+            if (isDelete) {
+              if (rel.songId) state.activeSongIds = state.activeSongIds.filter(id => id !== rel.songId);
+              state.releases = state.releases.filter(r => r !== rel);
+              logCorrection(state, adminUser, 'delete-release', releaseId, body.reason, { title: rel.title, artist: rel.artist }, null);
+              return json(res, 200, { ok: true });
+            }
+            const v = validateReleasePatch(body);
+            if (v.error) return json(res, 400, { error: v.error });
+            const before = {};
+            const after = {};
+            if (v.patch.title !== undefined) { before.title = rel.title; after.title = v.patch.title; rel.title = v.patch.title; }
+            if (v.patch.artist !== undefined) { before.artist = rel.artist; after.artist = v.patch.artist; rel.artist = v.patch.artist; }
+            if (v.patch.mojo) {
+              before.mojo = {};
+              after.mojo = {};
+              for (const [k, val] of Object.entries(v.patch.mojo)) { before.mojo[k] = rel.mojo[k]; after.mojo[k] = val; rel.mojo[k] = val; }
+            }
+            logCorrection(state, adminUser, 'edit-release', releaseId, body.reason, before, after);
+            return json(res, 200, { ok: true, release: { releaseId: rel.releaseId, title: rel.title, artist: rel.artist } });
+          });
+        }
+        const subMatch = p.match(/^\/api\/admin\/submission\/(\d+)$/);
+        if (subMatch && req.method === 'DELETE') {
+          const id = Number(subMatch[1]);
+          const body = await readJson(req);
+          if (!validReason(body)) return json(res, 400, { error: 'reason (3-300 chars) is required and is recorded in the correction log' });
+          return await store.update(async (state) => {
+            const sub = state.submissions.find(s => s.id === id);
+            if (!sub) return json(res, 404, { error: 'submission not found' });
+            if (sub.status !== 'pending') return json(res, 409, { error: 'only pending submissions can be deleted' });
+            state.submissions = state.submissions.filter(s => s !== sub);
+            logCorrection(state, adminUser, 'delete-submission', String(id), body.reason, { title: sub.title, artist: sub.artist }, null);
+            return json(res, 200, { ok: true });
+          });
         }
         return json(res, 404, { error: 'not found' });
       }

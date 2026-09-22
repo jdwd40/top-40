@@ -32,9 +32,39 @@ A dependency-light Node.js (CommonJS, standard library only) application:
   exactly-once/repeated/concurrent generation, catch-up, restart persistence,
   submission validation, rate limiting, and the admin session boundary.
 
-Still to come (chunks 2–4): public UI (responsive chart, reveal countdown,
-submission flow, history/all-time pages), admin UI (edits, corrections,
-preview), deployment config under `/top40`, browser QA and polish.
+Still to come (chunks 3–4): deployment config under `/top40`, browser QA
+and polish.
+
+## What exists (chunk 2: public + admin experience, ~60% of the full build)
+
+- **Public UI** (`public/index.html` + `style.css` + `app.js`, no CDN):
+  mobile-first chart-night design, live Europe/London countdown to the next
+  20:00 boundary, clear chart date, and the full Top 40 table — position,
+  NEW / RE-ENTRY badges, movement arrows, artist, title, weekly + cumulative
+  sales, weeks on chart, peak. A lively 40→1 reveal plays once per chart day
+  per browser (localStorage marker, Skip button, `prefers-reduced-motion`
+  bypass). Tabbed views browse dated historical snapshots, per-song chart
+  history (`/api/release/:id/history`), and all-time bestsellers. The
+  submission form validates length, and the 201 confirmation carries the
+  expected debut chart date. Fetch failures show retryable offline panels;
+  a polite live region announces changes. No mojo or admin data is exposed.
+- **Snapshot entries** now persist `cumulativeSales` and `reentry`, computed
+  at publish time, so history stays self-contained.
+- **Admin UI** (`public/admin.html` + `admin.js`) behind the existing signed
+  HttpOnly SameSite session: releases list with full mojo, inline editors for
+  title/artist/mojo (every change needs a reason and appends to the
+  correction log with before/after values), release deletion (frees rival
+  catalogue ids), pending-submission deletion, correction log, a pure
+  next-chart preview (`POST /api/admin/preview` — structured-clones state,
+  counts no sales, consumes no submissions, cannot publish), and the explicit
+  generate action.
+- **Immutability**: admin edits never rewrite published snapshots; the
+  published chart for a day keeps the titles/sales it was born with, and
+  cumulative published totals are never recomputed.
+- **Tests**: 32 assert-based suites covering date boundaries, simulation,
+  exactly-once generation, public payload shape, submission confirmation,
+  route assets, the admin session boundary, CRUD validation, correction
+  logging, preview purity, and snapshot immutability.
 
 ## Runtime state / reuse policy
 

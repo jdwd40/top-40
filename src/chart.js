@@ -79,6 +79,8 @@ function generateForDay(state, day) {
   }
 
   // 3. Score every live release for this week and rank.
+  const prevSnapshot = state.snapshots.length ? state.snapshots[state.snapshots.length - 1] : null;
+  const prevRanks = new Map(prevSnapshot ? prevSnapshot.entries.map(e => [e.releaseId, e.rank]) : []);
   const rows = [];
   for (const rel of state.releases) {
     if (rel.retired) continue;
@@ -110,9 +112,11 @@ function generateForDay(state, day) {
       title: rel.title,
       artist: rel.artist,
       weeklySales: sales,
+      cumulativeSales: rel.lifetimeSales,
       weeksOnChart: rel.weeksOnChart,
       peak: rel.peak,
       lastWeekRank: rel.lastWeekRank,
+      reentry: rel.lastWeekRank !== null && !prevRanks.has(rel.releaseId),
     });
     rel.lastWeekRank = rank;
   });
@@ -169,4 +173,14 @@ function allTime(state, limit = 100) {
     }));
 }
 
-module.exports = { generateForDay, catchUp, allTime, RETIRE_SALES };
+// Hypothetical snapshot for the NEXT chart day. Pure with respect to the
+// caller's state: works on a structured clone, so no sales are counted, no
+// submissions consumed, no snapshot persisted. Cannot publish.
+function previewNext(state) {
+  const day = state.lastGeneratedDay ? addDays(state.lastGeneratedDay, 1) : state.originDay;
+  const clone = structuredClone(state);
+  const { snapshot } = generateForDay(clone, day);
+  return { day, preview: true, snapshot };
+}
+
+module.exports = { generateForDay, catchUp, allTime, previewNext, RETIRE_SALES };

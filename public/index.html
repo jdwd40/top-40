@@ -4,28 +4,94 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The Ridiculous Top 40</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 40rem; padding: 0 1rem; }
-    li { margin: 0.35rem 0; }
-    .meta { color: #666; font-size: 0.9rem; }
-  </style>
+  <meta name="description" content="A daily fictional Top 40 chart simulation. New chart every day at 8pm UK time.">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <h1>The Ridiculous Top 40</h1>
-  <p class="meta">Core simulation API is running. Full public UI arrives in chunk 2.</p>
-  <h2>Current chart</h2>
-  <ol id="chart"><li>Loading…</li></ol>
-  <script>
-    fetch('/api/chart/current')
-      .then(r => r.json())
-      .then(({ chart }) => {
-        const el = document.getElementById('chart');
-        if (!chart || !chart.entries.length) { el.innerHTML = '<li>No chart yet.</li>'; return; }
-        el.innerHTML = chart.entries.map(e =>
-          `<li><strong>${e.rank}.</strong> ${e.title} — ${e.artist} <span class="meta">(${e.weeklySales.toLocaleString()} sales, peak ${e.peak}${e.lastWeekRank === null ? ', new entry' : ''})</span></li>`
-        ).join('');
-      })
-      .catch(() => { document.getElementById('chart').innerHTML = '<li>Failed to load chart.</li>'; });
-  </script>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="wrap">
+    <header class="site">
+      <h1 class="brand">The Ridiculous Top 40</h1>
+      <p class="tagline">A daily fictional chart · new countdown every day at 8pm UK time</p>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Main sections">
+      <button role="tab" id="tab-current" aria-selected="true" aria-controls="view-current" data-view="current">Current Chart</button>
+      <button role="tab" id="tab-history" aria-selected="false" aria-controls="view-history" data-view="history">Chart History</button>
+      <button role="tab" id="tab-alltime" aria-selected="false" aria-controls="view-alltime" data-view="alltime">All-Time Bestsellers</button>
+      <button role="tab" id="tab-submit" aria-selected="false" aria-controls="view-submit" data-view="submit">Submit a Song</button>
+    </nav>
+
+    <main id="main">
+      <!-- live status for screen readers -->
+      <div id="live" class="status" role="status" aria-live="polite"></div>
+
+      <section id="view-current" role="tabpanel" aria-labelledby="tab-current">
+        <div class="countdown-strip">
+          <div>
+            <span class="lbl">Next chart revealed in</span>
+            <span class="clock" id="countdown" aria-label="Countdown to next chart">—</span>
+          </div>
+          <div>
+            <span class="lbl">Current chart</span>
+            <span class="chartdate" id="chartdate">Loading…</span>
+          </div>
+        </div>
+        <div class="reveal-controls" id="reveal-controls" hidden>
+          <button class="btn small" id="skip-reveal" type="button">Skip animation</button>
+        </div>
+        <ol class="chartlist" id="chartlist"></ol>
+        <div class="offline" id="chart-offline" hidden>
+          <p>The chart could not be loaded. The server may be offline or unreachable.</p>
+          <button class="btn" id="retry-chart" type="button">Try again</button>
+        </div>
+      </section>
+
+      <section id="view-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+        <h2 style="margin-top:0">Past charts</h2>
+        <ul class="daylist" id="daylist"></ul>
+        <div id="history-chart"></div>
+        <div class="offline" id="history-offline" hidden>
+          <p>Chart history could not be loaded.</p>
+          <button class="btn" id="retry-history" type="button">Try again</button>
+        </div>
+      </section>
+
+      <section id="view-alltime" role="tabpanel" aria-labelledby="tab-alltime" hidden>
+        <h2 style="margin-top:0">All-time bestsellers</h2>
+        <div id="alltime-body"></div>
+        <div class="offline" id="alltime-offline" hidden>
+          <p>The all-time list could not be loaded.</p>
+          <button class="btn" id="retry-alltime" type="button">Try again</button>
+        </div>
+      </section>
+
+      <section id="view-submit" role="tabpanel" aria-labelledby="tab-submit" hidden>
+        <h2 style="margin-top:0">Submit your song</h2>
+        <p class="hint">User submissions get a strong shot at the Top 10 — but no guarantees.</p>
+        <form id="submit-form" novalidate>
+          <label for="f-title">Song title <span class="hint">(required, max 80 characters)</span></label>
+          <input type="text" id="f-title" name="title" required maxlength="80" autocomplete="off">
+          <label for="f-artist">Artist <span class="hint">(required, max 80 characters)</span></label>
+          <input type="text" id="f-artist" name="artist" required maxlength="80" autocomplete="off">
+          <div style="margin-top:1rem">
+            <button class="btn primary" type="submit">Submit song</button>
+          </div>
+        </form>
+        <div class="status" id="submit-status" role="status" aria-live="polite"></div>
+      </section>
+
+      <section id="view-song" hidden>
+        <button class="btn small" id="song-back" type="button">&larr; Back to chart</button>
+        <h2 id="song-heading">Chart history</h2>
+        <div id="song-body"></div>
+      </section>
+    </main>
+
+    <footer class="site">
+      <p>All sales are simulated. <a href="/admin.html">Admin</a></p>
+    </footer>
+  </div>
+  <script src="/app.js" defer></script>
 </body>
 </html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Top 40 — Admin</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="wrap">
+    <header class="site">
+      <h1 class="brand">Top 40 Admin</h1>
+      <p class="tagline">Corrections affect future charts only — published snapshots are immutable.</p>
+    </header>
+
+    <main id="main">
+      <div id="live" class="status" role="status" aria-live="polite"></div>
+
+      <section id="login-view">
+        <div class="panel" style="max-width:26rem">
+          <h2 style="margin-top:0">Sign in</h2>
+          <form id="login-form" novalidate>
+            <label for="l-user">Username</label>
+            <input type="text" id="l-user" name="username" required autocomplete="username">
+            <label for="l-pass">Password</label>
+            <input type="password" id="l-pass" name="password" required autocomplete="current-password">
+            <div style="margin-top:1rem"><button class="btn primary" type="submit">Sign in</button></div>
+          </form>
+          <div class="status" id="login-status" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section id="admin-view" hidden>
+        <nav class="tabs" role="tablist" aria-label="Admin sections">
+          <button role="tab" aria-selected="true" aria-controls="av-releases" data-av="releases">Releases</button>
+          <button role="tab" aria-selected="false" aria-controls="av-submissions" data-av="submissions">Submissions</button>
+          <button role="tab" aria-selected="false" aria-controls="av-preview" data-av="preview">Next-chart preview</button>
+          <button role="tab" aria-selected="false" aria-controls="av-corrections" data-av="corrections">Correction log</button>
+        </nav>
+
+        <section id="av-releases" role="tabpanel">
+          <p class="hint">Edit display metadata or simulation mojo. Every change needs a reason and is appended to the correction log. Changes never rewrite published charts.</p>
+          <div id="releases-list"><p class="hint">Loading…</p></div>
+        </section>
+
+        <section id="av-submissions" role="tabpanel" hidden>
+          <div id="submissions-list"><p class="hint">Loading…</p></div>
+        </section>
+
+        <section id="av-preview" role="tabpanel" hidden>
+          <p class="hint">A hypothetical preview of the next chart day. It counts no sales, consumes no submissions and cannot publish.</p>
+          <button class="btn" id="run-preview" type="button">Build preview</button>
+          <button class="btn primary" id="run-generate" type="button" style="margin-left:0.5rem">Generate next chart now</button>
+          <div class="status" id="generate-status" role="status" aria-live="polite"></div>
+          <div id="preview-body" style="margin-top:1rem"></div>
+        </section>
+
+        <section id="av-corrections" role="tabpanel" hidden>
+          <div id="corrections-list"><p class="hint">Loading…</p></div>
+        </section>
+
+        <div style="margin-top:1.5rem"><button class="btn danger" id="logout" type="button">Sign out</button></div>
+      </section>
+    </main>
+
+    <footer class="site"><p><a href="/">Back to the chart</a></p></footer>
+  </div>
+  <script src="/admin.js" defer></script>
+</body>
+</html>
