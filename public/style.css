@@ -177,7 +177,7 @@ ol.chartlist > li:nth-child(-n+3) .pos { text-shadow: 0 0 12px rgba(255, 211, 42
   margin-left: 0.35rem;
 }
 .badge.new { background: var(--green); color: #06210f; }
-.badge.reentry { background: var(--violet); color: #fff; }
+.badge.reentry { background: #8e44ad; color: #fff; } /* 5.8:1 on white, WCAG AA at badge size */
 .mv { font-weight: 800; font-variant-numeric: tabular-nums; }
 .mv.up { color: var(--green); }
 .mv.down { color: var(--red); }
@@ -210,7 +210,7 @@ input[type="text"], input[type="password"], input[type="number"], select, textar
   background: var(--bg2);
   color: var(--ink);
 }
-input:invalid { border-color: var(--red); }
+input:user-invalid { border-color: var(--red); }
 .hint { color: var(--ink-dim); font-size: 0.85rem; margin: 0.2rem 0 0; }
 
 .status {

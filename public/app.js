@@ -83,10 +83,17 @@ function revealEntries(listEl, day) {
 
 // ---- countdown ----
 let boundaryMs = null;
+let boundaryReloading = false;
 function tickCountdown() {
   const el = $('#countdown');
   if (boundaryMs === null) { el.textContent = '—'; return; }
   const ms = Math.max(0, boundaryMs - Date.now());
+  if (ms === 0 && !boundaryReloading) {
+    // Boundary crossed: refresh state + chart once so an open tab reveals the
+    // new chart. loadCurrent() also resets boundaryMs from /api/state.
+    boundaryReloading = true;
+    loadCurrent().finally(() => { boundaryReloading = false; });
+  }
   const s = Math.floor(ms / 1000);
   const d = Math.floor(s / 86400);
   const h = String(Math.floor((s % 86400) / 3600)).padStart(2, '0');

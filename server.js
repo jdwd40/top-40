@@ -150,7 +150,7 @@ function logCorrection(state, admin, type, refId, reason, before, after) {
 function serveStatic(req, res, urlPath) {
   let rel = urlPath === '/' ? '/index.html' : urlPath;
   const file = path.normalize(path.join(PUBLIC_DIR, rel));
-  if (!file.startsWith(PUBLIC_DIR)) return json(res, 403, { error: 'forbidden' });
+  if (file !== PUBLIC_DIR && !file.startsWith(PUBLIC_DIR + path.sep)) return json(res, 403, { error: 'forbidden' });
   fs.readFile(file, (err, data) => {
     if (err) return json(res, 404, { error: 'not found' });
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
@@ -188,10 +188,16 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
         });
       }
       if (req.method === 'GET' && p === '/api/chart/history') {
-        return await store.update(async (state) => json(res, 200, { snapshots: state.snapshots }));
+        return await store.update(async (state) => {
+          await ensureFresh(state);
+          return json(res, 200, { snapshots: state.snapshots });
+        });
       }
       if (req.method === 'GET' && p === '/api/chart/all-time') {
-        return await store.update(async (state) => json(res, 200, { allTime: allTime(state) }));
+        return await store.update(async (state) => {
+          await ensureFresh(state);
+          return json(res, 200, { allTime: allTime(state) });
+        });
       }
       if (req.method === 'POST' && p === '/api/submit') {
         const ip = req.socket.remoteAddress || 'unknown';
@@ -230,15 +236,20 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
       // ---- admin API (session boundary) ----
       if (p === '/api/admin/login' && req.method === 'POST') {
         if (!adminCreds.password) return json(res, 503, { error: 'admin login not configured' });
+        const ip = req.socket.remoteAddress || 'unknown';
+        if (!rateLimit(`login:${ip}`, 10, SUBMIT_WINDOW_MS)) {
+          return json(res, 429, { error: 'too many login attempts, try again later' });
+        }
         const body = await readJson(req);
         const ok = body.username === adminCreds.username && typeof body.password === 'string' &&
           body.password.length === adminCreds.password.length &&
           crypto.timingSafeEqual(Buffer.from(body.password), Buffer.from(adminCreds.password));
         if (!ok) return json(res, 401, { error: 'invalid credentials' });
         const token = auth.issue(sessionSecret, adminCreds.username);
+        const secure = req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
         res.writeHead(200, {
           'Content-Type': 'application/json; charset=utf-8',
-          'Set-Cookie': `${auth.COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${12 * 3600}`,
+          'Set-Cookie': `${auth.COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${12 * 3600}${secure}`,
         });
         return res.end(JSON.stringify({ ok: true }));
       }
@@ -251,9 +262,10 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
         if (!adminUser) return json(res, 401, { error: 'admin session required' });
         if (req.method === 'POST' && p === '/api/admin/logout') {
           if (rawToken) revoked.add(rawToken);
+          const secure = req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
           res.writeHead(200, {
             'Content-Type': 'application/json; charset=utf-8',
-            'Set-Cookie': `${auth.COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+            'Set-Cookie': `${auth.COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`,
           });
           return res.end(JSON.stringify({ ok: true }));
         }
@@ -280,10 +292,10 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
           return await store.update(async (state) => json(res, 200, { corrections: state.corrections.slice().reverse() }));
         }
         if (req.method === 'POST' && p === '/api/admin/preview') {
-          return await store.update(async (state) => {
-            await ensureFresh(state);
-            return json(res, 200, previewNext(state));
-          });
+          // Pure read: no catch-up, no persist. previewNext structured-clones
+          // state, so nothing it computes can publish, consume submissions, or
+          // add lifetime sales.
+          return json(res, 200, previewNext(store.state));
         }
         const releaseMatch = p.match(/^\/api\/admin\/release\/([^/]+)(\/delete)?$/);
         if (releaseMatch && (req.method === 'PATCH' || req.method === 'POST')) {

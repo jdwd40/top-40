@@ -102,7 +102,9 @@ function generateForDay(state, day) {
   top.forEach((row, i) => {
     const rank = i + 1;
     const { rel, sales, w } = row;
-    rel.weeksOnChart = w + 1;
+    // Count chart appearances, not calendar age: after an off-chart gap the
+    // number must not include the missed weeks.
+    rel.weeksOnChart += 1;
     rel.peak = rel.peak === null ? rank : Math.min(rel.peak, rank);
     rel.lifetimeSales += sales;
     snapshot.entries.push({

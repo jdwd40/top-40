@@ -48,7 +48,11 @@ function parseCookies(header) {
   for (const part of header.split(';')) {
     const idx = part.indexOf('=');
     if (idx < 0) continue;
-    out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+    try {
+      out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+    } catch {
+      // Malformed percent-escape (e.g. "%E0%"): treat as logged out, not a 500.
+    }
   }
   return out;
 }

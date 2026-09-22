@@ -61,10 +61,43 @@ and polish.
 - **Immutability**: admin edits never rewrite published snapshots; the
   published chart for a day keeps the titles/sales it was born with, and
   cumulative published totals are never recomputed.
-- **Tests**: 32 assert-based suites covering date boundaries, simulation,
+- **Tests**: 34 assert-based suites covering date boundaries, simulation,
   exactly-once generation, public payload shape, submission confirmation,
   route assets, the admin session boundary, CRUD validation, correction
-  logging, preview purity, and snapshot immutability.
+  logging, preview purity (including the stale-generator regression), snapshot
+  immutability, and weeks-on-chart appearance counting.
+
+## Review round (loop 2, ~78% of the full build)
+
+Independent review (Grok 4.6) FAILed the chunk-2 candidate on one MAJOR:
+`POST /api/admin/preview` ran live catch-up, so a stale generator could
+publish charts, consume submissions, and add lifetime sales as a side effect
+of a preview. Fixed and re-verified:
+
+- Preview handler is now a pure read: no `ensureFresh`, no `store.update`;
+  the state file on disk is not rewritten. Regression test starts from a
+  stale `lastGeneratedDay` plus a pending submission and asserts snapshots,
+  submission status/releaseId, lifetime totals, and the state file are all
+  unchanged.
+- User submission potential band now overlaps rivals (`0.25–0.95`) and
+  `short hit` is back in the user variants: 80-seed probe Top 10 = 75/80
+  (was 80/80), No. 1 = 27/80 — a meaningful chance, not a guarantee.
+- Current-chart mount is a `<div>` (no nested `<ol>` inside `<ol>`).
+- Countdown reloads `/api/state` + `/api/chart/current` once at the boundary.
+- `/api/chart/history` and `/api/chart/all-time` catch up missed days on
+  read, so API-only clients never see an empty history.
+- Malformed cookie percent escapes log out (401) instead of 500; admin
+  login is rate limited (10/IP/hour) like submissions.
+- Static path check requires a path separator after `public/`; session
+  cookies gain `Secure` when the request is (forwarded) HTTPS.
+- Re-entry badge violet darkened to `#8e44ad` (5.8:1, WCAG AA); empty
+  required inputs use `:user-invalid` so forms are not red on first load.
+- `weeksOnChart` counts chart appearances, not calendar age after a gap.
+- All strings stay escaped (text-safe rendering), hidden mojo stays private,
+  published snapshots stay immutable.
+
+Still to come (chunks 3–4): deployment config under `/top40`, browser QA
+and polish.
 
 ## Runtime state / reuse policy
 

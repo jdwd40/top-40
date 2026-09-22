@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { Store, dataFile } = require('../src/state');
+const { Store, freshState, dataFile } = require('../src/state');
 const { generateForDay, catchUp } = require('../src/chart');
 const { getCatalogue } = require('../src/catalogue');
 
@@ -95,6 +95,28 @@ test('no catalogue song appears twice in any chart', async () => {
     assert.equal(new Set(ids).size, ids.length, `day ${snap.day} has no duplicate catalogue songs`);
     for (const id of ids) assert.ok(catalogueIds.has(id), 'song id from catalogue');
   }
+});
+
+test('weeksOnChart counts chart appearances, not calendar age after a gap', () => {
+  const s = freshState();
+  s.seed = 42;
+  s.originDay = '2026-06-15';
+  const rel = {
+    releaseId: 'REL-0001', kind: 'rival', songId: 'SONG-001', title: 'T', artist: 'A',
+    releasedDay: '2026-06-15',
+    mojo: { potential: 0.9, debut: 1, climb: 0, plateau: 0, decline: 0, variation: 0, variant: 'steady', noise: Array.from({ length: 80 }, () => 1) },
+    weeksOnChart: 0, peak: null, lifetimeSales: 0, lastWeekRank: null, retired: false,
+  };
+  s.releases.push(rel);
+  s.activeSongIds.push('SONG-001');
+  generateForDay(s, '2026-06-15');
+  assert.equal(rel.weeksOnChart, 1);
+  // Simulate a missed week: a day-2 snapshot exists without the release.
+  s.snapshots.push({ day: '2026-06-16', weekIndex: 1, publishedAt: 'x', entries: [] });
+  s.lastGeneratedDay = '2026-06-16';
+  generateForDay(s, '2026-06-17');
+  assert.ok(rel.lastWeekRank !== null, 'release re-entered the chart');
+  assert.equal(rel.weeksOnChart, 2, 'the off-chart gap week is not counted');
 });
 
 test('TOP40_DATA_FILE env override picks the data file', () => {

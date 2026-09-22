@@ -27,15 +27,15 @@ function mulberry32(seed) {
 }
 
 const VARIANTS = ['spike', 'steady', 'short hit', 'burner', 'long decline'];
-const USER_VARIANTS = ['spike', 'burner', 'spike', 'steady', 'burner', 'long decline']; // weighted: users skew hit-shaped
+const USER_VARIANTS = ['spike', 'burner', 'spike', 'steady', 'burner', 'short hit', 'long decline']; // weighted: users skew hit-shaped
 const BASE_SALES = 60000;
 const NOISE_WEEKS = 80;
 
 function makeMojo(rng, kind) {
-  // User submissions sample a stronger potential band so they have a real
-  // shot at the Top 10 / No.1, without any guarantee (rivals overlap the
-  // same range and weekly noise still decides individual weeks).
-  const potential = kind === 'user' ? 0.45 + rng() * 0.53 : rng() * 0.95;
+  // User submissions sample a potential band overlapping the rivals', so they
+  // have a real shot at the Top 10 without it being guaranteed. Weekly noise
+  // and variant curves (incl. short hit) still decide individual weeks.
+  const potential = kind === 'user' ? 0.25 + rng() * 0.7 : rng() * 0.95;
   return {
     potential,
     debut: rng(),

@@ -97,6 +97,6 @@ test('user mojo band gives strong (not certain) potential', () => {
   generateForDay(s, DAY);
   const user = s.releases.find(r => r.kind === 'user');
   assert.ok(user, 'pending submission debuts as a release');
-  assert.ok(user.mojo.potential >= 0.45, 'user potential sampled from the strong band');
-  assert.ok(user.mojo.potential <= 0.99);
+  assert.ok(user.mojo.potential >= 0.25, 'user potential sampled from a band overlapping rivals');
+  assert.ok(user.mojo.potential <= 0.95);
 });

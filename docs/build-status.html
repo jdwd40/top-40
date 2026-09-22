@@ -7,7 +7,7 @@
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 42rem; padding: 0 1rem; color: #222; }
   .bar { background: #eee; border-radius: 4px; height: 1.25rem; overflow: hidden; }
-  .bar > div { background: linear-gradient(90deg,#ff4d8d,#ffd32a,#2ed573); height: 100%; width: 60%; }
+  .bar > div { background: linear-gradient(90deg,#ff4d8d,#ffd32a,#2ed573); height: 100%; width: 78%; }
   li { margin: 0.3rem 0; }
   .todo { color: #a55; }
 </style>
@@ -16,11 +16,36 @@
   <h1>The Ridiculous Top 40 — build status</h1>
   <p>Run 20260922-203921-0e8393 · branch factory/20260922-203921-0e8393-top40</p>
   <div class="bar"><div></div></div>
-  <p><strong>60%</strong> — chunks 1–2 of 4 complete (simulation core; public +
-  admin experience). Progress is measured by finished, verified chunks, not
-  lines of code.</p>
+  <p><strong>78%</strong> — chunks 1–2 of 4 complete plus the review-fix loop
+  (loop 2, all MAJOR/MINOR findings addressed). Progress is measured by
+  finished, verified chunks, not lines of code.</p>
 
-  <h2>Done (verified by <code>npm test</code> — 32 suites)</h2>
+  <h2>Review status (loop 2)</h2>
+  <p>Independent Grok 4.6 review FAILed the chunk-2 candidate on one MAJOR
+  (preview could publish, consume submissions, and add lifetime sales) plus
+  nine MINORs. All are fixed here and re-verified by tests, probes, and a
+  focused HTTP smoke test:</p>
+  <ul>
+    <li>MAJOR: <code>POST /api/admin/preview</code> is a pure read — no
+      catch-up, no persist; regression test on a stale generator proves
+      snapshots, submissions, lifetime totals, and the state file stay put</li>
+    <li>User potential band overlaps rivals (0.25–0.95) + <code>short hit</code>
+      variant: 80-seed probe Top 10 = 75/80 (was 80/80), No. 1 = 27/80</li>
+    <li>Chart mount is a <code>&lt;div&gt;</code> — no nested
+      <code>&lt;ol&gt;</code>; countdown reloads state + chart once at the
+      20:00 London boundary</li>
+    <li>History and all-time reads catch up missed days; preview stays pure</li>
+    <li>Malformed cookie escapes log out (401) instead of 500; login rate
+      limited 10/IP/hour</li>
+    <li>Separator-safe static path check; <code>Secure</code> cookie flag when
+      the request is HTTPS or forwarded HTTPS</li>
+    <li>Re-entry badge contrast 5.8:1 (WCAG AA); <code>:user-invalid</code>
+      instead of red empty required fields</li>
+    <li><code>weeksOnChart</code> counts chart appearances, not calendar age
+      after a gap</li>
+  </ul>
+
+  <h2>Done (verified by <code>npm test</code> — 34 suites)</h2>
   <ul>
     <li>Catalogue parser: 100 stable songs, single source of truth</li>
     <li>Europe/London chart days with a 20:00 boundary, GMT/BST + DST-correct</li>

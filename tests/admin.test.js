@@ -12,6 +12,7 @@ process.env.TOP40_ADMIN_PASSWORD = 'secret-pass';
 
 const { Store } = require('../src/state');
 const { createServer } = require('../server');
+const { addDays } = require('../src/dates');
 
 const sessionSecret = 'test-session-secret';
 
@@ -170,6 +171,36 @@ test('preview is pure: no publish, no lifetime sales, cannot mutate', async (t) 
   const d2 = JSON.parse(again.text);
   assert.equal(d2.day, d1.day);
   assert.deepEqual(d2.snapshot.entries, d1.snapshot.entries, 'preview chart content is deterministic');
+});
+
+test('preview on a stale generator publishes nothing (regression)', async (t) => {
+  const { server, store, file } = await boot();
+  t.after(() => server.close());
+  const cookie = await login(server);
+
+  // Stale generator: origin two days behind, nothing generated, one pending sub.
+  await store.update((s) => {
+    s.originDay = addDays(s.originDay, -2);
+    s.submissions.push({ id: 1, title: 'Stale Song', artist: 'B', submittedAt: '', status: 'pending', releaseId: null, expectedChartDay: s.originDay });
+  });
+  const diskBefore = fs.readFileSync(file, 'utf8');
+  const snapsBefore = store.state.snapshots.length;
+  const lifeBefore = store.state.releases.reduce((n, r) => n + r.lifetimeSales, 0);
+
+  const res = await request(server, 'POST', '/api/admin/preview', { cookie, body: {} });
+  assert.equal(res.status, 200);
+  const d = JSON.parse(res.text);
+  assert.equal(d.preview, true);
+  assert.equal(d.day, store.state.originDay, 'preview day is after the stale cursor, not today');
+
+  assert.equal(store.state.snapshots.length, snapsBefore, 'no snapshots published');
+  assert.equal(store.state.releases.length, 0, 'no releases created');
+  const sub = store.state.submissions[0];
+  assert.equal(sub.status, 'pending', 'submission not consumed');
+  assert.equal(sub.releaseId, null);
+  assert.equal(store.state.releases.reduce((n, r) => n + r.lifetimeSales, 0), lifeBefore, 'no lifetime sales added');
+  assert.equal(store.state.lastGeneratedDay, null, 'generator cursor unmoved');
+  assert.equal(fs.readFileSync(file, 'utf8'), diskBefore, 'state file on disk untouched');
 });
 
 test('generate after edits only affects future charts; published snapshot untouched', async (t) => {
