@@ -10,7 +10,7 @@ function announce(msg) { $('#live').textContent = msg; }
 function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 async function api(method, url, body) {
-  const res = await fetch(url, {
+  const res = await fetch(url.replace(/^\//, ''), {
     method,
     headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),

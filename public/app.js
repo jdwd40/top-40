@@ -11,7 +11,7 @@ const fmtDayShort = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 's
 function announce(msg) { $('#live').textContent = msg; }
 
 async function getJson(url) {
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  const res = await fetch(url.replace(/^\//, ''), { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -213,7 +213,7 @@ function initSubmit() {
       return;
     }
     try {
-      const res = await fetch('/api/submit', {
+      const res = await fetch('api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, artist }),
