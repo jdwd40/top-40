@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Store } = require('./src/state');
-const { catchUp, allTime, previewNext } = require('./src/chart');
+const { catchUp, allTime, previewNext, generateForDay } = require('./src/chart');
 const { currentChartDay, nextBoundary, addDays } = require('./src/dates');
 const auth = require('./src/auth');
 
@@ -272,6 +272,26 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
         if (req.method === 'POST' && p === '/api/admin/generate') {
           const results = await store.update(async (state) => catchUp(state));
           return json(res, 200, { ok: true, generated: results.filter(r => r.created).length });
+        }
+        if (req.method === 'POST' && p === '/api/admin/speedup') {
+          // Advance exactly one simulated chart week: the day after the last
+          // generated day, through the same idempotent generation path as
+          // catch-up. Never runs wall-clock catch-up, so one click = one day.
+          const summary = await store.update(async (state) => {
+            const prevSnapshot = state.snapshots.length ? state.snapshots[state.snapshots.length - 1] : null;
+            const day = state.lastGeneratedDay ? addDays(state.lastGeneratedDay, 1) : state.originDay;
+            const { snapshot, created } = generateForDay(state, day);
+            if (!created) {
+              return { ok: true, created: false, day: snapshot.day, entries: snapshot.entries.length, added: 0, released: 0, departed: 0 };
+            }
+            const prevIds = new Set(prevSnapshot ? prevSnapshot.entries.map(e => e.releaseId) : []);
+            const nowIds = new Set(snapshot.entries.map(e => e.releaseId));
+            const departed = [...prevIds].filter(id => !nowIds.has(id)).length;
+            const added = state.releases.filter(r => r.kind === 'rival' && r.releasedDay === day).length;
+            const released = state.releases.filter(r => r.kind === 'user' && r.releasedDay === day).length;
+            return { ok: true, created: true, day, entries: snapshot.entries.length, added, released, departed };
+          });
+          return json(res, 200, summary);
         }
         if (req.method === 'GET' && p === '/api/admin/state') {
           return await store.update(async (state) => json(res, 200, { state }));

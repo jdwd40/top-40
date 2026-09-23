@@ -20,7 +20,7 @@ test('simulation is deterministic for a given seed', () => {
   const a = generateForDay(makeState(42), DAY).snapshot;
   const b = generateForDay(makeState(42), DAY).snapshot;
   assert.deepEqual(a.entries, b.entries);
-  assert.ok(a.entries.length >= 2 && a.entries.length <= 3, 'day one charts only the debuting rivals');
+  assert.equal(a.entries.length, 40, 'day one is the seeded launch chart');
 });
 
 test('chart fills to 40 entries as releases accumulate', () => {
@@ -62,18 +62,19 @@ test('hidden mojo stays server-side: snapshots carry no mojo, state keeps it', (
 
 test('ranking tie-break is deterministic: equal sales order by releaseId asc', () => {
   const s = makeState(9);
+  generateForDay(s, DAY); // launch day seeds the 40-rival chart
+  const day2 = addDays(DAY, 1);
   const mojo = {
-    potential: 0.8, debut: 0.5, climb: 0.5, plateau: 0.5, decline: 0.5, variation: 0.5,
-    variant: 'steady', noise: Array.from({ length: 80 }, () => 0.5),
+    potential: 0.95, debut: 1, climb: 0, plateau: 0, decline: 0, variation: 0,
+    variant: 'spike', noise: Array.from({ length: 80 }, () => 1),
   };
   s.releases.push(
-    { releaseId: 'REL-0002', kind: 'rival', songId: 'SONG-002', title: 'B', artist: 'Y', releasedDay: DAY, mojo: { ...mojo }, weeksOnChart: 0, peak: null, lifetimeSales: 0, lastWeekRank: null, retired: false },
-    { releaseId: 'REL-0001', kind: 'rival', songId: 'SONG-001', title: 'A', artist: 'X', releasedDay: DAY, mojo: { ...mojo }, weeksOnChart: 0, peak: null, lifetimeSales: 0, lastWeekRank: null, retired: false },
+    { releaseId: 'REL-9002', kind: 'rival', songId: null, title: 'B', artist: 'Y', releasedDay: day2, mojo: { ...mojo }, weeksOnChart: 0, peak: null, lifetimeSales: 0, lastWeekRank: null, retired: false },
+    { releaseId: 'REL-9001', kind: 'rival', songId: null, title: 'A', artist: 'X', releasedDay: day2, mojo: { ...mojo }, weeksOnChart: 0, peak: null, lifetimeSales: 0, lastWeekRank: null, retired: false },
   );
-  s.activeSongIds.push('SONG-001', 'SONG-002');
-  const snap = generateForDay(s, DAY).snapshot;
-  const i1 = snap.entries.findIndex(e => e.releaseId === 'REL-0001');
-  const i2 = snap.entries.findIndex(e => e.releaseId === 'REL-0002');
+  const snap = generateForDay(s, day2).snapshot;
+  const i1 = snap.entries.findIndex(e => e.releaseId === 'REL-9001');
+  const i2 = snap.entries.findIndex(e => e.releaseId === 'REL-9002');
   assert.ok(i1 >= 0 && i2 >= 0, 'both crafted releases charted');
   assert.equal(snap.entries[i1].weeklySales, snap.entries[i2].weeklySales, 'identical mojo gives identical sales');
   assert.ok(i1 < i2, 'tie broken by releaseId ascending');

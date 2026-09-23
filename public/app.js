@@ -1,6 +1,6 @@
 'use strict';
 
-/* The Ridiculous Top 40 — public page logic. No dependencies. */
+/* Tripper City Top 40 — public page logic. No dependencies. */
 
 const $ = (sel) => document.querySelector(sel);
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

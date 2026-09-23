@@ -99,6 +99,35 @@ of a preview. Fixed and re-verified:
 The implementation and review-fix loop are complete; deployment and browser
 smoke verification are recorded below.
 
+## What exists (chunk 3: Tripper City Top 40 speed-up + launch seeding)
+
+- **Branding**: visible public/admin titles and copy read "Tripper City Top
+  40". Paths, APIs, and the `/top40/` deployment location are unchanged.
+- **Launch seeding**: a fresh game publishes its first chart with exactly 40
+  catalogue rival releases holding distinct stable song ids. Launch entries
+  pre-fill `lastWeekRank` with their debut rank, so the first chart shows no
+  NEW badges; movement the following week compares against the launch rank.
+  Existing persisted games are untouched — seeding only runs when the first
+  chart day is generated for a snapshot-less state.
+- **One rival per week**: every generated chart day after the launch adds
+  exactly one rival catalogue release (pending user submissions still debut as
+  before), so a strong newcomer displaces a weakening incumbent through the
+  existing retire lifecycle (off-chart + negligible weekly sales retires a
+  release and recycles its catalogue song id). Snapshots and cumulative totals
+  stay immutable and exactly-once.
+- **Admin Speed up**: `POST /api/admin/speedup` (session-bound, store-lock
+  serialized) advances exactly one simulated chart week per call through the
+  same idempotent `generateForDay` path — never a catch-up cascade, never the
+  Europe/London wall clock. It persists the snapshot and returns
+  `{ ok, created, day, entries, added, released, departed }`. Repeated calls
+  step one day at a time and restart retains the result. The admin
+  next-chart preview tab carries a **Speed up** button with live summary
+  feedback; preview stays pure and real-time catch-up stays exactly-once.
+- **Tests**: 43 suites, including fresh 40-entry launch (no NEW badges, stable
+  distinct song ids), one-rival-per-week with displacement/retirement/recycling,
+  speed-up auth/persistence/repeated calls/no-cascade/wall-clock invariance,
+  user-submission release counting, and branding payloads.
+
 Deployment and live smoke verification are complete.
 
 ## Deployment (verified 2026-09-23)

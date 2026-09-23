@@ -9,6 +9,7 @@ Factory run `20260922-203921-0e8393`, project `top-40`, branch
 | BUILD chunk 1 | Engineer | kimi-for-coding | kimi-coding | Implemented the application core: catalogue parsing, Europe/London chart-day utilities, deterministic release simulation, JSON persistence, exactly-once/catch-up generation, HTTP API with session-bound admin endpoints, and the test suite. |
 | BUILD chunk 2 | Engineer | kimi-for-coding | kimi-coding | Built the public experience (countdown, full chart table, reveal animation, history/all-time/song-history views, submission flow) and the admin experience (session-bound CRUD, reasoned correction log, pure next-chart preview), extended snapshots with cumulative sales + re-entry flags, and added payload/CRUD/immutability/route-asset tests. |
 | INSPECT / fix / deploy | Reviewer + engineer | Grok 4.6 review-only; Kimi fixes | xai-oauth + kimi-coding | Grok identified the preview side effect and related hardening findings; the fixes passed 34 tests, focused HTTP smoke checks, and were deployed at the revision recorded in `docs/project-state.md`. |
+| BUILD chunk 3 | Engineer | kimi-for-coding | kimi-coding | Factory run `20260923-071153-b712a5`: Tripper City Top 40 rebranding, fresh 40-entry launch seeding (no NEW badges), one-rival-per-week chart policy with displacement through the retire lifecycle, and the session-bound one-day-per-click admin Speed up endpoint; 43 test suites green. |
 
 Per JD's factory v0.4 model discipline: Codex orchestrates only, Kimi codes
 only, Grok 4.6 reviews only (INSPECT stage). No worker self-repointed; no

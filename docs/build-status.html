@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Top 40 — build status</title>
+<title>Tripper City Top 40 — build status</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 42rem; padding: 0 1rem; color: #222; }
   .bar { background: #eee; border-radius: 4px; height: 1.25rem; overflow: hidden; }
@@ -13,12 +13,34 @@
 </style>
 </head>
 <body>
-  <h1>The Ridiculous Top 40 — build status</h1>
-  <p>Run 20260922-203921-0e8393 · branch factory/20260922-203921-0e8393-top40</p>
+  <h1>Tripper City Top 40 — build status</h1>
+  <p>Run 20260923-071153-b712a5 · branch factory/20260923-071153-b712a5-top40-speedup</p>
   <div class="bar"><div></div></div>
-  <p><strong>100%</strong> — implementation, review-fix loop, deployment and
-  live smoke verification are complete. Progress is measured by finished,
-  verified deliverables, not lines of code.</p>
+  <p><strong>100%</strong> — speed-up and launch-seeding implementation is
+  complete and verified by 43 test suites; deployment of this revision is
+  pending. Progress is measured by finished, verified deliverables, not lines
+  of code.</p>
+
+  <h2>Chunk 3 — speed-up and launch seeding (verified by <code>npm test</code>)</h2>
+  <ul>
+    <li>Visible public/admin pages rebranded to <strong>Tripper City Top
+      40</strong>; paths and APIs compatible</li>
+    <li>Fresh games launch with exactly 40 seeded catalogue rival releases —
+      distinct stable song ids, no NEW badges on the first chart; existing
+      persisted games are never rewritten</li>
+    <li>Every later chart week adds exactly one rival release (pending user
+      submissions still debut), displacing weakening incumbents through the
+      existing retire/recycle lifecycle; snapshots and cumulative totals stay
+      immutable and exactly-once</li>
+    <li>Session-bound <code>POST /api/admin/speedup</code> advances exactly one
+      simulated chart week per call via the same idempotent generation path —
+      no catch-up cascade, no Europe/London wall-clock changes — and persists
+      <code>{ ok, created, day, entries, added, released, departed }</code>;
+      restart retains the result</li>
+    <li>Admin next-chart preview tab gained a <strong>Speed up</strong> button
+      with live summary feedback; preview stays pure and real-time catch-up
+      stays exactly-once</li>
+  </ul>
 
   <h2>Review status and deployment</h2>
   <p>Independent Grok 4.6 review FAILed the initial chunk-2 candidate on one
