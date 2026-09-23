@@ -1,6 +1,6 @@
 'use strict';
 
-/* Top 40 admin page. Session cookie is HttpOnly; nothing sensitive in code. */
+/* Tripper City Top 40 admin page. Session cookie is HttpOnly; nothing sensitive in code. */
 
 const $ = (s) => document.querySelector(s);
 const fmt = new Intl.NumberFormat('en-GB');
@@ -178,6 +178,17 @@ $('#run-generate').addEventListener('click', async () => {
   const { status, data } = await api('POST', '/api/admin/generate', {});
   box.className = status === 200 ? 'status ok' : 'status err';
   box.textContent = status === 200 ? `Generated ${data.generated} new chart day(s).` : (data.error || `HTTP ${status}`);
+  if (status === 200) { loadReleases(); loadSubmissions(); }
+});
+
+$('#run-speedup').addEventListener('click', async () => {
+  const box = $('#generate-status');
+  box.className = 'status';
+  const { status, data } = await api('POST', '/api/admin/speedup', {});
+  box.className = status === 200 ? 'status ok' : 'status err';
+  box.textContent = status === 200
+    ? `Speed up: chart ${data.day} published — ${data.entries} entries, ${data.added} rival(s) added, ${data.released} user release(s), ${data.departed} departed.`
+    : (data.error || `HTTP ${status}`);
   if (status === 200) { loadReleases(); loadSubmissions(); }
 });
 

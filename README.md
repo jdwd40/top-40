@@ -1,4 +1,4 @@
-# The Ridiculous Top 40
+# Tripper City Top 40
 
 A mobile-first daily fictional chart simulation for kids. One real day is one chart week.
 

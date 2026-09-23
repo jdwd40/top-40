@@ -71,8 +71,12 @@ function generateForDay(state, day) {
     state.releases.push(rel);
   }
 
-  // 2. New rival releases (2-3 per chart day), never reusing a live song id.
-  const rivalCount = 2 + Math.floor(rng() * 2);
+  // 2. Rival releases. Launch day seeds a full 40-entry chart from the
+  //    catalogue; every later chart day adds exactly one rival (skipping when
+  //    the catalogue is genuinely exhausted), so a new release can displace
+  //    an existing chart entry through the normal retire lifecycle.
+  const launch = state.snapshots.length === 0;
+  const rivalCount = launch ? 40 : 1;
   for (let i = 0; i < rivalCount; i++) {
     const rel = createRivalRelease(state, day, rng);
     if (rel) state.releases.push(rel);
@@ -117,8 +121,10 @@ function generateForDay(state, day) {
       cumulativeSales: rel.lifetimeSales,
       weeksOnChart: rel.weeksOnChart,
       peak: rel.peak,
-      lastWeekRank: rel.lastWeekRank,
-      reentry: rel.lastWeekRank !== null && !prevRanks.has(rel.releaseId),
+      // Launch entries pre-fill lastWeekRank with their debut rank so the
+      // first chart shows no NEW badges; movement next week compares honestly.
+      lastWeekRank: launch ? rank : rel.lastWeekRank,
+      reentry: !launch && rel.lastWeekRank !== null && !prevRanks.has(rel.releaseId),
     });
     rel.lastWeekRank = rank;
   });
