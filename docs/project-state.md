@@ -32,8 +32,8 @@ A dependency-light Node.js (CommonJS, standard library only) application:
   exactly-once/repeated/concurrent generation, catch-up, restart persistence,
   submission validation, rate limiting, and the admin session boundary.
 
-Still to come (chunks 3–4): deployment config under `/top40`, browser QA
-and polish.
+The app is deployed under the isolated `/top40` path; see the deployment
+record below.
 
 ## What exists (chunk 2: public + admin experience, ~60% of the full build)
 
@@ -93,11 +93,26 @@ of a preview. Fixed and re-verified:
 - Re-entry badge violet darkened to `#8e44ad` (5.8:1, WCAG AA); empty
   required inputs use `:user-invalid` so forms are not red on first load.
 - `weeksOnChart` counts chart appearances, not calendar age after a gap.
-- All strings stay escaped (text-safe rendering), hidden mojo stays private,
+- **All strings** stay escaped (text-safe rendering), hidden mojo stays private,
   published snapshots stay immutable.
 
-Still to come (chunks 3–4): deployment config under `/top40`, browser QA
-and polish.
+The implementation and review-fix loop are complete; deployment and browser
+smoke verification are recorded below.
+
+Deployment and live smoke verification are complete.
+
+## Deployment (verified 2026-09-23)
+
+- **URL**: `https://jdwd40.com/top40/` (the existing site root was left
+  unchanged).
+- **Revision**: `040788ee13bfa07fcec556bc949d189e552cfa15`.
+- **Runtime**: `deploy@top-40.service`, bound to `127.0.0.1:4210`, with the
+  JSON state file outside the checkout at the server's persistent data path.
+- **Proxy**: nginx owns the isolated `/top40/` location and forwards HTTPS
+  headers so secure admin cookies work in production.
+- **Checks**: health, public HTML/CSS/JS, chart API, root-site preservation,
+  admin 401 boundary, admin login/state, pure preview, desktop browser load,
+  and the deployed revision were verified after reload.
 
 ## Runtime state / reuse policy
 

@@ -7,7 +7,7 @@
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 42rem; padding: 0 1rem; color: #222; }
   .bar { background: #eee; border-radius: 4px; height: 1.25rem; overflow: hidden; }
-  .bar > div { background: linear-gradient(90deg,#ff4d8d,#ffd32a,#2ed573); height: 100%; width: 78%; }
+  .bar > div { background: linear-gradient(90deg,#ff4d8d,#ffd32a,#2ed573); height: 100%; width: 100%; }
   li { margin: 0.3rem 0; }
   .todo { color: #a55; }
 </style>
@@ -16,15 +16,15 @@
   <h1>The Ridiculous Top 40 — build status</h1>
   <p>Run 20260922-203921-0e8393 · branch factory/20260922-203921-0e8393-top40</p>
   <div class="bar"><div></div></div>
-  <p><strong>78%</strong> — chunks 1–2 of 4 complete plus the review-fix loop
-  (loop 2, all MAJOR/MINOR findings addressed). Progress is measured by
-  finished, verified chunks, not lines of code.</p>
+  <p><strong>100%</strong> — implementation, review-fix loop, deployment and
+  live smoke verification are complete. Progress is measured by finished,
+  verified deliverables, not lines of code.</p>
 
-  <h2>Review status (loop 2)</h2>
-  <p>Independent Grok 4.6 review FAILed the chunk-2 candidate on one MAJOR
-  (preview could publish, consume submissions, and add lifetime sales) plus
-  nine MINORs. All are fixed here and re-verified by tests, probes, and a
-  focused HTTP smoke test:</p>
+  <h2>Review status and deployment</h2>
+  <p>Independent Grok 4.6 review FAILed the initial chunk-2 candidate on one
+  MAJOR (preview could publish, consume submissions, and add lifetime sales)
+  plus nine MINORs. All findings were fixed and re-verified by tests, probes,
+  focused HTTP smoke, and the deployed live service:</p>
   <ul>
     <li>MAJOR: <code>POST /api/admin/preview</code> is a pure read — no
       catch-up, no persist; regression test on a stale generator proves
@@ -67,10 +67,15 @@
       purity, snapshot immutability, route assets</li>
   </ul>
 
-  <h2>Not started</h2>
-  <ul class="todo">
-    <li>Chunk 3 — deployment config under /top40, operational hardening</li>
-    <li>Chunk 4 — browser QA, accessibility audit, polish</li>
+  <h2>Deployment</h2>
+  <ul>
+    <li><a href="https://jdwd40.com/top40/">Live Top 40</a> is served from
+      the isolated <code>/top40/</code> path; the existing root site is
+      unchanged.</li>
+    <li>Revision <code>040788e</code> runs as a persistent user service on
+      <code>127.0.0.1:4210</code> with JSON state outside the checkout.</li>
+    <li>Verified: health, assets, chart API, admin boundary/login, pure
+      preview, and a real browser load.</li>
   </ul>
 </body>
 </html>
