@@ -144,3 +144,308 @@ Each `song_id` is stable. Store user-created releases separately and use this ca
 4. Keep a generated release’s title and artist consistent throughout its run. Do not interpret these jokes as actual audio recordings, lyrics, real singles or claims about real performers.
 
 All names and song titles here are fictional parody content written for this app. The title jokes may echo pop culture conventions; no actual recordings or lyrics are supplied.
+
+## Expanded current catalogue
+
+The current catalogue below contains realistic fictional acts and recordings. Each extended row is `song_id | artist | genre | title | band_id | super_band | era`; the original 100 rows above remain legacy entries.
+
+| SONG-101 | Harbor Lights | Rock | Harbor Signal | harbor-lights | 1 | current |
+| SONG-102 | Harbor Lights | Rock | Harbor Falling Forward | harbor-lights | 1 | current |
+| SONG-103 | Harbor Lights | Rock | Harbor Open Water | harbor-lights | 1 | current |
+| SONG-104 | Harbor Lights | Rock | Harbor Second Wind | harbor-lights | 1 | current |
+| SONG-105 | Harbor Lights | Rock | Harbor Afterglow | harbor-lights | 1 | current |
+| SONG-106 | Harbor Lights | Rock | Harbor Parallel Lines | harbor-lights | 1 | current |
+| SONG-107 | Harbor Lights | Rock | Harbor Gravity | harbor-lights | 1 | current |
+| SONG-108 | Harbor Lights | Rock | Harbor Long Way Home | harbor-lights | 1 | current |
+| SONG-109 | Harbor Lights | Rock | Harbor Stay Until Morning | harbor-lights | 1 | current |
+| SONG-110 | Harbor Lights | Rock | Harbor No Turning Back | harbor-lights | 1 | current |
+| SONG-111 | The North Lines | Pop | North Signal | north-lines | 1 | current |
+| SONG-112 | The North Lines | Pop | North Falling Forward | north-lines | 1 | current |
+| SONG-113 | The North Lines | Pop | North Open Water | north-lines | 1 | current |
+| SONG-114 | The North Lines | Pop | North Second Wind | north-lines | 1 | current |
+| SONG-115 | The North Lines | Pop | North Afterglow | north-lines | 1 | current |
+| SONG-116 | The North Lines | Pop | North Parallel Lines | north-lines | 1 | current |
+| SONG-117 | The North Lines | Pop | North Gravity | north-lines | 1 | current |
+| SONG-118 | The North Lines | Pop | North Long Way Home | north-lines | 1 | current |
+| SONG-119 | The North Lines | Pop | North Stay Until Morning | north-lines | 1 | current |
+| SONG-120 | The North Lines | Pop | North No Turning Back | north-lines | 1 | current |
+| SONG-121 | Silver Orchard | Indie | Silver Signal | silver-orchard | 0 | current |
+| SONG-122 | Silver Orchard | Indie | Silver Falling Forward | silver-orchard | 0 | current |
+| SONG-123 | Silver Orchard | Indie | Silver Open Water | silver-orchard | 0 | current |
+| SONG-124 | Silver Orchard | Indie | Silver Second Wind | silver-orchard | 0 | current |
+| SONG-125 | Silver Orchard | Indie | Silver Afterglow | silver-orchard | 0 | current |
+| SONG-126 | Silver Orchard | Indie | Silver Parallel Lines | silver-orchard | 0 | current |
+| SONG-127 | Silver Orchard | Indie | Silver Gravity | silver-orchard | 0 | current |
+| SONG-128 | Silver Orchard | Indie | Silver Long Way Home | silver-orchard | 0 | current |
+| SONG-129 | Silver Orchard | Indie | Silver Stay Until Morning | silver-orchard | 0 | current |
+| SONG-130 | Silver Orchard | Indie | Silver No Turning Back | silver-orchard | 0 | current |
+| SONG-131 | Violet Relay | Electronic | Violet Signal | violet-relay | 0 | current |
+| SONG-132 | Violet Relay | Electronic | Violet Falling Forward | violet-relay | 0 | current |
+| SONG-133 | Violet Relay | Electronic | Violet Open Water | violet-relay | 0 | current |
+| SONG-134 | Violet Relay | Electronic | Violet Second Wind | violet-relay | 0 | current |
+| SONG-135 | Violet Relay | Electronic | Violet Afterglow | violet-relay | 0 | current |
+| SONG-136 | Violet Relay | Electronic | Violet Parallel Lines | violet-relay | 0 | current |
+| SONG-137 | Violet Relay | Electronic | Violet Gravity | violet-relay | 0 | current |
+| SONG-138 | Violet Relay | Electronic | Violet Long Way Home | violet-relay | 0 | current |
+| SONG-139 | Violet Relay | Electronic | Violet Stay Until Morning | violet-relay | 0 | current |
+| SONG-140 | Violet Relay | Electronic | Violet No Turning Back | violet-relay | 0 | current |
+| SONG-141 | Westbound Hearts | Country | Westbound Signal | westbound-hearts | 0 | current |
+| SONG-142 | Westbound Hearts | Country | Westbound Falling Forward | westbound-hearts | 0 | current |
+| SONG-143 | Westbound Hearts | Country | Westbound Open Water | westbound-hearts | 0 | current |
+| SONG-144 | Westbound Hearts | Country | Westbound Second Wind | westbound-hearts | 0 | current |
+| SONG-145 | Westbound Hearts | Country | Westbound Afterglow | westbound-hearts | 0 | current |
+| SONG-146 | Westbound Hearts | Country | Westbound Parallel Lines | westbound-hearts | 0 | current |
+| SONG-147 | Westbound Hearts | Country | Westbound Gravity | westbound-hearts | 0 | current |
+| SONG-148 | Westbound Hearts | Country | Westbound Long Way Home | westbound-hearts | 0 | current |
+| SONG-149 | Westbound Hearts | Country | Westbound Stay Until Morning | westbound-hearts | 0 | current |
+| SONG-150 | Westbound Hearts | Country | Westbound No Turning Back | westbound-hearts | 0 | current |
+| SONG-151 | Cinder & Coast | Alternative | Cinder Signal | cinder-coast | 0 | current |
+| SONG-152 | Cinder & Coast | Alternative | Cinder Falling Forward | cinder-coast | 0 | current |
+| SONG-153 | Cinder & Coast | Alternative | Cinder Open Water | cinder-coast | 0 | current |
+| SONG-154 | Cinder & Coast | Alternative | Cinder Second Wind | cinder-coast | 0 | current |
+| SONG-155 | Cinder & Coast | Alternative | Cinder Afterglow | cinder-coast | 0 | current |
+| SONG-156 | Cinder & Coast | Alternative | Cinder Parallel Lines | cinder-coast | 0 | current |
+| SONG-157 | Cinder & Coast | Alternative | Cinder Gravity | cinder-coast | 0 | current |
+| SONG-158 | Cinder & Coast | Alternative | Cinder Long Way Home | cinder-coast | 0 | current |
+| SONG-159 | Cinder & Coast | Alternative | Cinder Stay Until Morning | cinder-coast | 0 | current |
+| SONG-160 | Cinder & Coast | Alternative | Cinder No Turning Back | cinder-coast | 0 | current |
+| SONG-161 | Golden Static | Dance/EDM | Golden Signal | golden-static | 1 | current |
+| SONG-162 | Golden Static | Dance/EDM | Golden Falling Forward | golden-static | 1 | current |
+| SONG-163 | Golden Static | Dance/EDM | Golden Open Water | golden-static | 1 | current |
+| SONG-164 | Golden Static | Dance/EDM | Golden Second Wind | golden-static | 1 | current |
+| SONG-165 | Golden Static | Dance/EDM | Golden Afterglow | golden-static | 1 | current |
+| SONG-166 | Golden Static | Dance/EDM | Golden Parallel Lines | golden-static | 1 | current |
+| SONG-167 | Golden Static | Dance/EDM | Golden Gravity | golden-static | 1 | current |
+| SONG-168 | Golden Static | Dance/EDM | Golden Long Way Home | golden-static | 1 | current |
+| SONG-169 | Golden Static | Dance/EDM | Golden Stay Until Morning | golden-static | 1 | current |
+| SONG-170 | Golden Static | Dance/EDM | Golden No Turning Back | golden-static | 1 | current |
+| SONG-171 | Mosaic Bloom | R&B | Mosaic Signal | mosaic-bloom | 0 | current |
+| SONG-172 | Mosaic Bloom | R&B | Mosaic Falling Forward | mosaic-bloom | 0 | current |
+| SONG-173 | Mosaic Bloom | R&B | Mosaic Open Water | mosaic-bloom | 0 | current |
+| SONG-174 | Mosaic Bloom | R&B | Mosaic Second Wind | mosaic-bloom | 0 | current |
+| SONG-175 | Mosaic Bloom | R&B | Mosaic Afterglow | mosaic-bloom | 0 | current |
+| SONG-176 | Mosaic Bloom | R&B | Mosaic Parallel Lines | mosaic-bloom | 0 | current |
+| SONG-177 | Mosaic Bloom | R&B | Mosaic Gravity | mosaic-bloom | 0 | current |
+| SONG-178 | Mosaic Bloom | R&B | Mosaic Long Way Home | mosaic-bloom | 0 | current |
+| SONG-179 | Mosaic Bloom | R&B | Mosaic Stay Until Morning | mosaic-bloom | 0 | current |
+| SONG-180 | Mosaic Bloom | R&B | Mosaic No Turning Back | mosaic-bloom | 0 | current |
+| SONG-181 | Atlas Theory | Hip-Hop | Atlas Signal | atlas-theory | 0 | current |
+| SONG-182 | Atlas Theory | Hip-Hop | Atlas Falling Forward | atlas-theory | 0 | current |
+| SONG-183 | Atlas Theory | Hip-Hop | Atlas Open Water | atlas-theory | 0 | current |
+| SONG-184 | Atlas Theory | Hip-Hop | Atlas Second Wind | atlas-theory | 0 | current |
+| SONG-185 | Atlas Theory | Hip-Hop | Atlas Afterglow | atlas-theory | 0 | current |
+| SONG-186 | Atlas Theory | Hip-Hop | Atlas Parallel Lines | atlas-theory | 0 | current |
+| SONG-187 | Atlas Theory | Hip-Hop | Atlas Gravity | atlas-theory | 0 | current |
+| SONG-188 | Atlas Theory | Hip-Hop | Atlas Long Way Home | atlas-theory | 0 | current |
+| SONG-189 | Atlas Theory | Hip-Hop | Atlas Stay Until Morning | atlas-theory | 0 | current |
+| SONG-190 | Atlas Theory | Hip-Hop | Atlas No Turning Back | atlas-theory | 0 | current |
+| SONG-191 | Lucent City | Dance/EDM | Lucent Signal | lucent-city | 0 | current |
+| SONG-192 | Lucent City | Dance/EDM | Lucent Falling Forward | lucent-city | 0 | current |
+| SONG-193 | Lucent City | Dance/EDM | Lucent Open Water | lucent-city | 0 | current |
+| SONG-194 | Lucent City | Dance/EDM | Lucent Second Wind | lucent-city | 0 | current |
+| SONG-195 | Lucent City | Dance/EDM | Lucent Afterglow | lucent-city | 0 | current |
+| SONG-196 | Lucent City | Dance/EDM | Lucent Parallel Lines | lucent-city | 0 | current |
+| SONG-197 | Lucent City | Dance/EDM | Lucent Gravity | lucent-city | 0 | current |
+| SONG-198 | Lucent City | Dance/EDM | Lucent Long Way Home | lucent-city | 0 | current |
+| SONG-199 | Lucent City | Dance/EDM | Lucent Stay Until Morning | lucent-city | 0 | current |
+| SONG-200 | Lucent City | Dance/EDM | Lucent No Turning Back | lucent-city | 0 | current |
+| SONG-201 | The Glass Hours | Rock | Glass Signal | glass-hours | 0 | current |
+| SONG-202 | The Glass Hours | Rock | Glass Falling Forward | glass-hours | 0 | current |
+| SONG-203 | The Glass Hours | Rock | Glass Open Water | glass-hours | 0 | current |
+| SONG-204 | The Glass Hours | Rock | Glass Second Wind | glass-hours | 0 | current |
+| SONG-205 | The Glass Hours | Rock | Glass Afterglow | glass-hours | 0 | current |
+| SONG-206 | The Glass Hours | Rock | Glass Parallel Lines | glass-hours | 0 | current |
+| SONG-207 | The Glass Hours | Rock | Glass Gravity | glass-hours | 0 | current |
+| SONG-208 | The Glass Hours | Rock | Glass Long Way Home | glass-hours | 0 | current |
+| SONG-209 | The Glass Hours | Rock | Glass Stay Until Morning | glass-hours | 0 | current |
+| SONG-210 | The Glass Hours | Rock | Glass No Turning Back | glass-hours | 0 | current |
+| SONG-211 | River Arcade | Electronic | River Signal | river-arcade | 0 | current |
+| SONG-212 | River Arcade | Electronic | River Falling Forward | river-arcade | 0 | current |
+| SONG-213 | River Arcade | Electronic | River Open Water | river-arcade | 0 | current |
+| SONG-214 | River Arcade | Electronic | River Second Wind | river-arcade | 0 | current |
+| SONG-215 | River Arcade | Electronic | River Afterglow | river-arcade | 0 | current |
+| SONG-216 | River Arcade | Electronic | River Parallel Lines | river-arcade | 0 | current |
+| SONG-217 | River Arcade | Electronic | River Gravity | river-arcade | 0 | current |
+| SONG-218 | River Arcade | Electronic | River Long Way Home | river-arcade | 0 | current |
+| SONG-219 | River Arcade | Electronic | River Stay Until Morning | river-arcade | 0 | current |
+| SONG-220 | River Arcade | Electronic | River No Turning Back | river-arcade | 0 | current |
+| SONG-221 | Cedar & June | Country | Cedar Signal | cedar-june | 0 | current |
+| SONG-222 | Cedar & June | Country | Cedar Falling Forward | cedar-june | 0 | current |
+| SONG-223 | Cedar & June | Country | Cedar Open Water | cedar-june | 0 | current |
+| SONG-224 | Cedar & June | Country | Cedar Second Wind | cedar-june | 0 | current |
+| SONG-225 | Cedar & June | Country | Cedar Afterglow | cedar-june | 0 | current |
+| SONG-226 | Cedar & June | Country | Cedar Parallel Lines | cedar-june | 0 | current |
+| SONG-227 | Cedar & June | Country | Cedar Gravity | cedar-june | 0 | current |
+| SONG-228 | Cedar & June | Country | Cedar Long Way Home | cedar-june | 0 | current |
+| SONG-229 | Cedar & June | Country | Cedar Stay Until Morning | cedar-june | 0 | current |
+| SONG-230 | Cedar & June | Country | Cedar No Turning Back | cedar-june | 0 | current |
+| SONG-231 | Night Signal | Alternative | Night Signal | night-signal | 0 | current |
+| SONG-232 | Night Signal | Alternative | Night Falling Forward | night-signal | 0 | current |
+| SONG-233 | Night Signal | Alternative | Night Open Water | night-signal | 0 | current |
+| SONG-234 | Night Signal | Alternative | Night Second Wind | night-signal | 0 | current |
+| SONG-235 | Night Signal | Alternative | Night Afterglow | night-signal | 0 | current |
+| SONG-236 | Night Signal | Alternative | Night Parallel Lines | night-signal | 0 | current |
+| SONG-237 | Night Signal | Alternative | Night Gravity | night-signal | 0 | current |
+| SONG-238 | Night Signal | Alternative | Night Long Way Home | night-signal | 0 | current |
+| SONG-239 | Night Signal | Alternative | Night Stay Until Morning | night-signal | 0 | current |
+| SONG-240 | Night Signal | Alternative | Night No Turning Back | night-signal | 0 | current |
+| SONG-241 | Brightwater | Pop | Brightwater Signal | brightwater | 0 | current |
+| SONG-242 | Brightwater | Pop | Brightwater Falling Forward | brightwater | 0 | current |
+| SONG-243 | Brightwater | Pop | Brightwater Open Water | brightwater | 0 | current |
+| SONG-244 | Brightwater | Pop | Brightwater Second Wind | brightwater | 0 | current |
+| SONG-245 | Brightwater | Pop | Brightwater Afterglow | brightwater | 0 | current |
+| SONG-246 | Brightwater | Pop | Brightwater Parallel Lines | brightwater | 0 | current |
+| SONG-247 | Brightwater | Pop | Brightwater Gravity | brightwater | 0 | current |
+| SONG-248 | Brightwater | Pop | Brightwater Long Way Home | brightwater | 0 | current |
+| SONG-249 | Brightwater | Pop | Brightwater Stay Until Morning | brightwater | 0 | current |
+| SONG-250 | Brightwater | Pop | Brightwater No Turning Back | brightwater | 0 | current |
+| SONG-251 | Common Ground | Indie | Common Signal | common-ground | 0 | current |
+| SONG-252 | Common Ground | Indie | Common Falling Forward | common-ground | 0 | current |
+| SONG-253 | Common Ground | Indie | Common Open Water | common-ground | 0 | current |
+| SONG-254 | Common Ground | Indie | Common Second Wind | common-ground | 0 | current |
+| SONG-255 | Common Ground | Indie | Common Afterglow | common-ground | 0 | current |
+| SONG-256 | Common Ground | Indie | Common Parallel Lines | common-ground | 0 | current |
+| SONG-257 | Common Ground | Indie | Common Gravity | common-ground | 0 | current |
+| SONG-258 | Common Ground | Indie | Common Long Way Home | common-ground | 0 | current |
+| SONG-259 | Common Ground | Indie | Common Stay Until Morning | common-ground | 0 | current |
+| SONG-260 | Common Ground | Indie | Common No Turning Back | common-ground | 0 | current |
+| SONG-261 | Velour Skyline | R&B | Velour Signal | velour-skyline | 1 | current |
+| SONG-262 | Velour Skyline | R&B | Velour Falling Forward | velour-skyline | 1 | current |
+| SONG-263 | Velour Skyline | R&B | Velour Open Water | velour-skyline | 1 | current |
+| SONG-264 | Velour Skyline | R&B | Velour Second Wind | velour-skyline | 1 | current |
+| SONG-265 | Velour Skyline | R&B | Velour Afterglow | velour-skyline | 1 | current |
+| SONG-266 | Velour Skyline | R&B | Velour Parallel Lines | velour-skyline | 1 | current |
+| SONG-267 | Velour Skyline | R&B | Velour Gravity | velour-skyline | 1 | current |
+| SONG-268 | Velour Skyline | R&B | Velour Long Way Home | velour-skyline | 1 | current |
+| SONG-269 | Velour Skyline | R&B | Velour Stay Until Morning | velour-skyline | 1 | current |
+| SONG-270 | Velour Skyline | R&B | Velour No Turning Back | velour-skyline | 1 | current |
+| SONG-271 | Low Meridian | Hip-Hop | Low Signal | low-meridian | 0 | current |
+| SONG-272 | Low Meridian | Hip-Hop | Low Falling Forward | low-meridian | 0 | current |
+| SONG-273 | Low Meridian | Hip-Hop | Low Open Water | low-meridian | 0 | current |
+| SONG-274 | Low Meridian | Hip-Hop | Low Second Wind | low-meridian | 0 | current |
+| SONG-275 | Low Meridian | Hip-Hop | Low Afterglow | low-meridian | 0 | current |
+| SONG-276 | Low Meridian | Hip-Hop | Low Parallel Lines | low-meridian | 0 | current |
+| SONG-277 | Low Meridian | Hip-Hop | Low Gravity | low-meridian | 0 | current |
+| SONG-278 | Low Meridian | Hip-Hop | Low Long Way Home | low-meridian | 0 | current |
+| SONG-279 | Low Meridian | Hip-Hop | Low Stay Until Morning | low-meridian | 0 | current |
+| SONG-280 | Low Meridian | Hip-Hop | Low No Turning Back | low-meridian | 0 | current |
+| SONG-281 | Halogen Hearts | Dance/EDM | Halogen Signal | halogen-hearts | 0 | current |
+| SONG-282 | Halogen Hearts | Dance/EDM | Halogen Falling Forward | halogen-hearts | 0 | current |
+| SONG-283 | Halogen Hearts | Dance/EDM | Halogen Open Water | halogen-hearts | 0 | current |
+| SONG-284 | Halogen Hearts | Dance/EDM | Halogen Second Wind | halogen-hearts | 0 | current |
+| SONG-285 | Halogen Hearts | Dance/EDM | Halogen Afterglow | halogen-hearts | 0 | current |
+| SONG-286 | Halogen Hearts | Dance/EDM | Halogen Parallel Lines | halogen-hearts | 0 | current |
+| SONG-287 | Halogen Hearts | Dance/EDM | Halogen Gravity | halogen-hearts | 0 | current |
+| SONG-288 | Halogen Hearts | Dance/EDM | Halogen Long Way Home | halogen-hearts | 0 | current |
+| SONG-289 | Halogen Hearts | Dance/EDM | Halogen Stay Until Morning | halogen-hearts | 0 | current |
+| SONG-290 | Halogen Hearts | Dance/EDM | Halogen No Turning Back | halogen-hearts | 0 | current |
+| SONG-291 | The Wild Current | Rock | Wild Signal | wild-current | 0 | current |
+| SONG-292 | The Wild Current | Rock | Wild Falling Forward | wild-current | 0 | current |
+| SONG-293 | The Wild Current | Rock | Wild Open Water | wild-current | 0 | current |
+| SONG-294 | The Wild Current | Rock | Wild Second Wind | wild-current | 0 | current |
+| SONG-295 | The Wild Current | Rock | Wild Afterglow | wild-current | 0 | current |
+| SONG-296 | The Wild Current | Rock | Wild Parallel Lines | wild-current | 0 | current |
+| SONG-297 | The Wild Current | Rock | Wild Gravity | wild-current | 0 | current |
+| SONG-298 | The Wild Current | Rock | Wild Long Way Home | wild-current | 0 | current |
+| SONG-299 | The Wild Current | Rock | Wild Stay Until Morning | wild-current | 0 | current |
+| SONG-300 | The Wild Current | Rock | Wild No Turning Back | wild-current | 0 | current |
+| SONG-301 | Ash & Apricot | Soul | Ash Signal | ash-apricot | 0 | current |
+| SONG-302 | Ash & Apricot | Soul | Ash Falling Forward | ash-apricot | 0 | current |
+| SONG-303 | Ash & Apricot | Soul | Ash Open Water | ash-apricot | 0 | current |
+| SONG-304 | Ash & Apricot | Soul | Ash Second Wind | ash-apricot | 0 | current |
+| SONG-305 | Ash & Apricot | Soul | Ash Afterglow | ash-apricot | 0 | current |
+| SONG-306 | Ash & Apricot | Soul | Ash Parallel Lines | ash-apricot | 0 | current |
+| SONG-307 | Ash & Apricot | Soul | Ash Gravity | ash-apricot | 0 | current |
+| SONG-308 | Ash & Apricot | Soul | Ash Long Way Home | ash-apricot | 0 | current |
+| SONG-309 | Ash & Apricot | Soul | Ash Stay Until Morning | ash-apricot | 0 | current |
+| SONG-310 | Ash & Apricot | Soul | Ash No Turning Back | ash-apricot | 0 | current |
+| SONG-311 | Paper Satellites | Electronic | Paper Signal | paper-satellites | 0 | current |
+| SONG-312 | Paper Satellites | Electronic | Paper Falling Forward | paper-satellites | 0 | current |
+| SONG-313 | Paper Satellites | Electronic | Paper Open Water | paper-satellites | 0 | current |
+| SONG-314 | Paper Satellites | Electronic | Paper Second Wind | paper-satellites | 0 | current |
+| SONG-315 | Paper Satellites | Electronic | Paper Afterglow | paper-satellites | 0 | current |
+| SONG-316 | Paper Satellites | Electronic | Paper Parallel Lines | paper-satellites | 0 | current |
+| SONG-317 | Paper Satellites | Electronic | Paper Gravity | paper-satellites | 0 | current |
+| SONG-318 | Paper Satellites | Electronic | Paper Long Way Home | paper-satellites | 0 | current |
+| SONG-319 | Paper Satellites | Electronic | Paper Stay Until Morning | paper-satellites | 0 | current |
+| SONG-320 | Paper Satellites | Electronic | Paper No Turning Back | paper-satellites | 0 | current |
+| SONG-321 | Juniper Road | Country | Juniper Signal | juniper-road | 1 | current |
+| SONG-322 | Juniper Road | Country | Juniper Falling Forward | juniper-road | 1 | current |
+| SONG-323 | Juniper Road | Country | Juniper Open Water | juniper-road | 1 | current |
+| SONG-324 | Juniper Road | Country | Juniper Second Wind | juniper-road | 1 | current |
+| SONG-325 | Juniper Road | Country | Juniper Afterglow | juniper-road | 1 | current |
+| SONG-326 | Juniper Road | Country | Juniper Parallel Lines | juniper-road | 1 | current |
+| SONG-327 | Juniper Road | Country | Juniper Gravity | juniper-road | 1 | current |
+| SONG-328 | Juniper Road | Country | Juniper Long Way Home | juniper-road | 1 | current |
+| SONG-329 | Juniper Road | Country | Juniper Stay Until Morning | juniper-road | 1 | current |
+| SONG-330 | Juniper Road | Country | Juniper No Turning Back | juniper-road | 1 | current |
+| SONG-331 | Static Parade | Alternative | Static Signal | static-parade | 0 | current |
+| SONG-332 | Static Parade | Alternative | Static Falling Forward | static-parade | 0 | current |
+| SONG-333 | Static Parade | Alternative | Static Open Water | static-parade | 0 | current |
+| SONG-334 | Static Parade | Alternative | Static Second Wind | static-parade | 0 | current |
+| SONG-335 | Static Parade | Alternative | Static Afterglow | static-parade | 0 | current |
+| SONG-336 | Static Parade | Alternative | Static Parallel Lines | static-parade | 0 | current |
+| SONG-337 | Static Parade | Alternative | Static Gravity | static-parade | 0 | current |
+| SONG-338 | Static Parade | Alternative | Static Long Way Home | static-parade | 0 | current |
+| SONG-339 | Static Parade | Alternative | Static Stay Until Morning | static-parade | 0 | current |
+| SONG-340 | Static Parade | Alternative | Static No Turning Back | static-parade | 0 | current |
+| SONG-341 | Marlowe Street | Pop | Marlowe Signal | marlowe-street | 0 | current |
+| SONG-342 | Marlowe Street | Pop | Marlowe Falling Forward | marlowe-street | 0 | current |
+| SONG-343 | Marlowe Street | Pop | Marlowe Open Water | marlowe-street | 0 | current |
+| SONG-344 | Marlowe Street | Pop | Marlowe Second Wind | marlowe-street | 0 | current |
+| SONG-345 | Marlowe Street | Pop | Marlowe Afterglow | marlowe-street | 0 | current |
+| SONG-346 | Marlowe Street | Pop | Marlowe Parallel Lines | marlowe-street | 0 | current |
+| SONG-347 | Marlowe Street | Pop | Marlowe Gravity | marlowe-street | 0 | current |
+| SONG-348 | Marlowe Street | Pop | Marlowe Long Way Home | marlowe-street | 0 | current |
+| SONG-349 | Marlowe Street | Pop | Marlowe Stay Until Morning | marlowe-street | 0 | current |
+| SONG-350 | Marlowe Street | Pop | Marlowe No Turning Back | marlowe-street | 0 | current |
+| SONG-351 | Blue Hour Club | R&B | Blue Hour Signal | blue-hour-club | 0 | current |
+| SONG-352 | Blue Hour Club | R&B | Blue Hour Falling Forward | blue-hour-club | 0 | current |
+| SONG-353 | Blue Hour Club | R&B | Blue Hour Open Water | blue-hour-club | 0 | current |
+| SONG-354 | Blue Hour Club | R&B | Blue Hour Second Wind | blue-hour-club | 0 | current |
+| SONG-355 | Blue Hour Club | R&B | Blue Hour Afterglow | blue-hour-club | 0 | current |
+| SONG-356 | Blue Hour Club | R&B | Blue Hour Parallel Lines | blue-hour-club | 0 | current |
+| SONG-357 | Blue Hour Club | R&B | Blue Hour Gravity | blue-hour-club | 0 | current |
+| SONG-358 | Blue Hour Club | R&B | Blue Hour Long Way Home | blue-hour-club | 0 | current |
+| SONG-359 | Blue Hour Club | R&B | Blue Hour Stay Until Morning | blue-hour-club | 0 | current |
+| SONG-360 | Blue Hour Club | R&B | Blue Hour No Turning Back | blue-hour-club | 0 | current |
+| SONG-361 | Cobalt Theory | Hip-Hop | Cobalt Signal | cobalt-theory | 0 | current |
+| SONG-362 | Cobalt Theory | Hip-Hop | Cobalt Falling Forward | cobalt-theory | 0 | current |
+| SONG-363 | Cobalt Theory | Hip-Hop | Cobalt Open Water | cobalt-theory | 0 | current |
+| SONG-364 | Cobalt Theory | Hip-Hop | Cobalt Second Wind | cobalt-theory | 0 | current |
+| SONG-365 | Cobalt Theory | Hip-Hop | Cobalt Afterglow | cobalt-theory | 0 | current |
+| SONG-366 | Cobalt Theory | Hip-Hop | Cobalt Parallel Lines | cobalt-theory | 0 | current |
+| SONG-367 | Cobalt Theory | Hip-Hop | Cobalt Gravity | cobalt-theory | 0 | current |
+| SONG-368 | Cobalt Theory | Hip-Hop | Cobalt Long Way Home | cobalt-theory | 0 | current |
+| SONG-369 | Cobalt Theory | Hip-Hop | Cobalt Stay Until Morning | cobalt-theory | 0 | current |
+| SONG-370 | Cobalt Theory | Hip-Hop | Cobalt No Turning Back | cobalt-theory | 0 | current |
+| SONG-371 | Sundial Youth | Indie | Sundial Signal | sundial-youth | 0 | current |
+| SONG-372 | Sundial Youth | Indie | Sundial Falling Forward | sundial-youth | 0 | current |
+| SONG-373 | Sundial Youth | Indie | Sundial Open Water | sundial-youth | 0 | current |
+| SONG-374 | Sundial Youth | Indie | Sundial Second Wind | sundial-youth | 0 | current |
+| SONG-375 | Sundial Youth | Indie | Sundial Afterglow | sundial-youth | 0 | current |
+| SONG-376 | Sundial Youth | Indie | Sundial Parallel Lines | sundial-youth | 0 | current |
+| SONG-377 | Sundial Youth | Indie | Sundial Gravity | sundial-youth | 0 | current |
+| SONG-378 | Sundial Youth | Indie | Sundial Long Way Home | sundial-youth | 0 | current |
+| SONG-379 | Sundial Youth | Indie | Sundial Stay Until Morning | sundial-youth | 0 | current |
+| SONG-380 | Sundial Youth | Indie | Sundial No Turning Back | sundial-youth | 0 | current |
+| SONG-381 | Afterlight Union | Soul | Afterlight Signal | afterlight-union | 0 | current |
+| SONG-382 | Afterlight Union | Soul | Afterlight Falling Forward | afterlight-union | 0 | current |
+| SONG-383 | Afterlight Union | Soul | Afterlight Open Water | afterlight-union | 0 | current |
+| SONG-384 | Afterlight Union | Soul | Afterlight Second Wind | afterlight-union | 0 | current |
+| SONG-385 | Afterlight Union | Soul | Afterlight Afterglow | afterlight-union | 0 | current |
+| SONG-386 | Afterlight Union | Soul | Afterlight Parallel Lines | afterlight-union | 0 | current |
+| SONG-387 | Afterlight Union | Soul | Afterlight Gravity | afterlight-union | 0 | current |
+| SONG-388 | Afterlight Union | Soul | Afterlight Long Way Home | afterlight-union | 0 | current |
+| SONG-389 | Afterlight Union | Soul | Afterlight Stay Until Morning | afterlight-union | 0 | current |
+| SONG-390 | Afterlight Union | Soul | Afterlight No Turning Back | afterlight-union | 0 | current |
+| SONG-391 | Monument FM | Electronic | Monument Signal | monument-fm | 1 | current |
+| SONG-392 | Monument FM | Electronic | Monument Falling Forward | monument-fm | 1 | current |
+| SONG-393 | Monument FM | Electronic | Monument Open Water | monument-fm | 1 | current |
+| SONG-394 | Monument FM | Electronic | Monument Second Wind | monument-fm | 1 | current |
+| SONG-395 | Monument FM | Electronic | Monument Afterglow | monument-fm | 1 | current |
+| SONG-396 | Monument FM | Electronic | Monument Parallel Lines | monument-fm | 1 | current |
+| SONG-397 | Monument FM | Electronic | Monument Gravity | monument-fm | 1 | current |
+| SONG-398 | Monument FM | Electronic | Monument Long Way Home | monument-fm | 1 | current |
+| SONG-399 | Monument FM | Electronic | Monument Stay Until Morning | monument-fm | 1 | current |
+| SONG-400 | Monument FM | Electronic | Monument No Turning Back | monument-fm | 1 | current |

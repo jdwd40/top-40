@@ -19,6 +19,8 @@
       <button role="tab" id="tab-current" aria-selected="true" aria-controls="view-current" data-view="current">Current Chart</button>
       <button role="tab" id="tab-history" aria-selected="false" aria-controls="view-history" data-view="history">Chart History</button>
       <button role="tab" id="tab-alltime" aria-selected="false" aria-controls="view-alltime" data-view="alltime">All-Time Bestsellers</button>
+      <button role="tab" id="tab-genres" aria-selected="false" aria-controls="view-genres" data-view="genres">Genre Top 10s</button>
+      <button role="tab" id="tab-bands" aria-selected="false" aria-controls="view-bands" data-view="bands">Band leaderboard</button>
       <button role="tab" id="tab-submit" aria-selected="false" aria-controls="view-submit" data-view="submit">Submit a Song</button>
     </nav>
 
@@ -66,14 +68,46 @@
         </div>
       </section>
 
+      <section id="view-genres" role="tabpanel" aria-labelledby="tab-genres" hidden>
+        <h2 style="margin-top:0">Genre Top 10s</h2>
+        <div id="genres-body" class="leaderboard-grid"></div>
+        <div class="offline" id="genres-offline" hidden>
+          <p>The genre charts could not be loaded.</p>
+          <button class="btn" id="retry-genres" type="button">Try again</button>
+        </div>
+      </section>
+
+      <section id="view-bands" role="tabpanel" aria-labelledby="tab-bands" hidden>
+        <h2 style="margin-top:0">Band leaderboard</h2>
+        <div id="bands-body"></div>
+        <div class="offline" id="bands-offline" hidden>
+          <p>The band leaderboard could not be loaded.</p>
+          <button class="btn" id="retry-bands" type="button">Try again</button>
+        </div>
+      </section>
+
       <section id="view-submit" role="tabpanel" aria-labelledby="tab-submit" hidden>
         <h2 style="margin-top:0">Submit your song</h2>
-        <p class="hint">User submissions get a strong shot at the Top 10 — but no guarantees.</p>
+        <p class="hint">Submissions are automatically treated as super bands and get a strong shot at the Top 10.</p>
         <form id="submit-form" novalidate>
           <label for="f-title">Song title <span class="hint">(required, max 80 characters)</span></label>
           <input type="text" id="f-title" name="title" required maxlength="80" autocomplete="off">
           <label for="f-artist">Artist <span class="hint">(required, max 80 characters)</span></label>
           <input type="text" id="f-artist" name="artist" required maxlength="80" autocomplete="off">
+          <label for="f-genre">Genre</label>
+          <select id="f-genre" name="genre" required>
+            <option value="">Choose a genre</option>
+            <option>Hip-Hop</option>
+            <option>Dance/EDM</option>
+            <option>Rock</option>
+            <option>Pop</option>
+            <option>R&amp;B</option>
+            <option>Country</option>
+            <option>Indie</option>
+            <option>Soul</option>
+            <option>Alternative</option>
+            <option>Electronic</option>
+          </select>
           <div style="margin-top:1rem">
             <button class="btn primary" type="submit">Submit song</button>
           </div>

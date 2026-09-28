@@ -31,7 +31,19 @@ const USER_VARIANTS = ['spike', 'burner', 'spike', 'steady', 'burner', 'short hi
 const BASE_SALES = 60000;
 const NOISE_WEEKS = 80;
 
-function makeMojo(rng, kind) {
+function makeMojo(rng, kind, superBand = false) {
+  if (superBand) {
+    return {
+      potential: 0.9 + rng() * 0.1,
+      debut: 0.8 + rng() * 0.2,
+      climb: rng() * 0.35,
+      plateau: 0.75 + rng() * 0.25,
+      decline: 0.92 + rng() * 0.08,
+      variation: rng() * 0.2,
+      variant: 'super band',
+      noise: Array.from({ length: NOISE_WEEKS }, () => rng()),
+    };
+  }
   // User submissions sample a potential band overlapping the rivals', so they
   // have a real shot at the Top 10 without it being guaranteed. Weekly noise
   // and variant curves (incl. short hit) still decide individual weeks.
@@ -57,6 +69,7 @@ function weeklySales(release, w) {
   let plateauWeeks = Math.round(m.plateau * 5);   // 0..5
   let retain = 0.5 + m.decline * 0.45;            // 0.50..0.95 weekly retention
   switch (m.variant) {
+    case 'super band': climbWeeks = 1 + Math.round(m.climb * 3); plateauWeeks = 5 + Math.round(m.plateau * 4); retain = 0.92 + m.decline * 0.06; break;
     case 'spike': climbWeeks = Math.min(climbWeeks, 2); plateauWeeks = Math.min(plateauWeeks, 1); retain = Math.min(retain, 0.55); break;
     case 'short hit': climbWeeks = Math.min(climbWeeks, 1); plateauWeeks = Math.min(plateauWeeks, 1); retain = 0.35; break;
     case 'steady': plateauWeeks += 3; retain = Math.max(retain, 0.8); break;

@@ -67,6 +67,27 @@ test('health, static index, and public chart with no mojo leak', async (t) => {
   }
 });
 
+test('README documents admin access without credentials', () => {
+  const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+  assert.match(readme, /\/top40\/admin\.html/);
+  assert.match(readme, /TOP40_ADMIN_USER/);
+  assert.match(readme, /TOP40_ADMIN_PASSWORD/);
+});
+
+test('submissions require a canonical genre and become super bands', async (t) => {
+  const { server, store } = await boot();
+  t.after(() => server.close());
+  const bad = await request(server, 'POST', '/api/submit', { body: { title: 'A', artist: 'B', genre: 'Opera' } });
+  assert.equal(bad.status, 400);
+  assert.equal(store.state.submissions.length, 0);
+  const good = await request(server, 'POST', '/api/submit', { body: { title: 'A', artist: 'B', genre: 'Rock' } });
+  assert.equal(good.status, 201);
+  await request(server, 'GET', '/api/chart/current');
+  const release = store.state.releases.find((row) => row.kind === 'user');
+  assert.equal(release.genre, 'Rock');
+  assert.equal(release.superBand, true);
+});
+
 test('submission validation and in-memory rate limit', async (t) => {
   const { server } = await boot();
   t.after(() => server.close());
@@ -78,10 +99,10 @@ test('submission validation and in-memory rate limit', async (t) => {
 
   let last;
   for (let i = 0; i < 6; i++) { // 4 validation failures above + these 6 = 10 allowed
-    last = await request(server, 'POST', '/api/submit', { body: { title: `Song ${i}`, artist: 'A' } });
+    last = await request(server, 'POST', '/api/submit', { body: { title: `Song ${i}`, artist: 'A', genre: 'Rock' } });
     assert.equal(last.status, 201, `submission ${i + 1} accepted`);
   }
-  const blocked = await request(server, 'POST', '/api/submit', { body: { title: 'One more', artist: 'A' } });
+  const blocked = await request(server, 'POST', '/api/submit', { body: { title: 'One more', artist: 'A', genre: 'Rock' } });
   assert.equal(blocked.status, 429, '11th submission within the window is rate limited');
 });
 
@@ -114,4 +135,23 @@ test('admin session boundary behind signed HttpOnly SameSite cookie', async (t) 
   assert.equal(logout.status, 200);
   const afterLogout = await request(server, 'GET', '/api/admin/state', { cookie });
   assert.equal(afterLogout.status, 401, 'logged-out session rejected');
+});
+
+test('public band and genre leaderboards expose sorted safe payloads', async (t) => {
+  const { server } = await boot();
+  t.after(() => server.close());
+
+  const bands = await request(server, 'GET', '/api/chart/bands');
+  assert.equal(bands.status, 200);
+  const bandData = JSON.parse(bands.text);
+  assert.ok(bandData.bands.length > 0);
+  assert.ok(bandData.bands.every((row, index, rows) => index === 0 || rows[index - 1].earnings >= row.earnings));
+  assert.ok(!bands.text.includes('mojo'));
+
+  const genres = await request(server, 'GET', '/api/chart/genres');
+  assert.equal(genres.status, 200);
+  const genreData = JSON.parse(genres.text);
+  assert.equal(Object.keys(genreData.genres).length, 10);
+  assert.ok(Object.values(genreData.genres).every((rows) => rows.length <= 10));
+  assert.ok(!genres.text.includes('mojo'));
 });

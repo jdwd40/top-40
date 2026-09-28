@@ -9,8 +9,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Store } = require('./src/state');
-const { catchUp, allTime, previewNext, generateForDay } = require('./src/chart');
+const { catchUp, allTime, bandLeaderboard, genreTopTen, currentSnapshot, previewNext, generateForDay } = require('./src/chart');
 const { currentChartDay, nextBoundary, addDays } = require('./src/dates');
+const { GENRES } = require('./src/catalogue');
 const auth = require('./src/auth');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -95,7 +96,9 @@ function validateSubmission(body) {
   const artist = typeof body.artist === 'string' ? body.artist.trim() : '';
   if (!title || title.length > TITLE_MAX) return { error: `title must be a string of 1-${TITLE_MAX} characters` };
   if (!artist || artist.length > TITLE_MAX) return { error: `artist must be a string of 1-${TITLE_MAX} characters` };
-  return { title, artist };
+  const genre = typeof body.genre === 'string' ? body.genre.trim() : '';
+  if (!GENRES.includes(genre)) return { error: `genre must be one of: ${GENRES.join(', ')}` };
+  return { title, artist, genre };
 }
 
 // ---- admin field validation (every field validated, nothing trusted) ----
@@ -160,6 +163,7 @@ function serveStatic(req, res, urlPath) {
 
 function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
   const adminCreds = auth.adminCredentials();
+  const rateScope = crypto.randomUUID();
   const revoked = new Set(); // logout denylist, in-memory per process
 
   async function ensureFresh(state) {
@@ -183,8 +187,19 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
       if (req.method === 'GET' && p === '/api/chart/current') {
         return await store.update(async (state) => {
           await ensureFresh(state);
-          const snap = state.snapshots[state.snapshots.length - 1] || null;
-          return json(res, 200, { chart: snap });
+          return json(res, 200, { chart: currentSnapshot(state) });
+        });
+      }
+      if (req.method === 'GET' && p === '/api/chart/genres') {
+        return await store.update(async (state) => {
+          await ensureFresh(state);
+          return json(res, 200, { genres: genreTopTen(state) });
+        });
+      }
+      if (req.method === 'GET' && p === '/api/chart/bands') {
+        return await store.update(async (state) => {
+          await ensureFresh(state);
+          return json(res, 200, { bands: bandLeaderboard(state) });
         });
       }
       if (req.method === 'GET' && p === '/api/chart/history') {
@@ -201,7 +216,7 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
       }
       if (req.method === 'POST' && p === '/api/submit') {
         const ip = req.socket.remoteAddress || 'unknown';
-        if (!rateLimit(`submit:${ip}`, SUBMIT_MAX, SUBMIT_WINDOW_MS)) {
+        if (!rateLimit(`submit:${rateScope}:${ip}`, SUBMIT_MAX, SUBMIT_WINDOW_MS)) {
           return json(res, 429, { error: 'too many submissions, try again later' });
         }
         const body = await readJson(req);
@@ -209,13 +224,13 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
         if (v.error) return json(res, 400, { error: v.error });
         const sub = await store.update((state) => {
           state.counters.submission += 1;
-          const entry = { id: state.counters.submission, title: v.title, artist: v.artist, submittedAt: new Date().toISOString(), status: 'pending', releaseId: null };
+          const entry = { id: state.counters.submission, title: v.title, artist: v.artist, genre: v.genre, superBand: true, submittedAt: new Date().toISOString(), status: 'pending', releaseId: null };
           state.submissions.push(entry);
           // The submission debuts on the very next chart that gets generated.
           entry.expectedChartDay = state.lastGeneratedDay ? addDays(state.lastGeneratedDay, 1) : state.originDay;
           return entry;
         });
-        return json(res, 201, { ok: true, submission: { id: sub.id, status: sub.status, expectedChartDay: sub.expectedChartDay } });
+        return json(res, 201, { ok: true, submission: { id: sub.id, status: sub.status, genre: sub.genre, superBand: true, expectedChartDay: sub.expectedChartDay } });
       }
       if (req.method === 'GET' && p.startsWith('/api/release/') && p.endsWith('/history')) {
         const releaseId = decodeURIComponent(p.slice('/api/release/'.length, -'/history'.length));
@@ -237,7 +252,7 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
       if (p === '/api/admin/login' && req.method === 'POST') {
         if (!adminCreds.password) return json(res, 503, { error: 'admin login not configured' });
         const ip = req.socket.remoteAddress || 'unknown';
-        if (!rateLimit(`login:${ip}`, 10, SUBMIT_WINDOW_MS)) {
+        if (!rateLimit(`login:${rateScope}:${ip}`, 10, SUBMIT_WINDOW_MS)) {
           return json(res, 429, { error: 'too many login attempts, try again later' });
         }
         const body = await readJson(req);
@@ -330,7 +345,7 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
               if (rel.songId) state.activeSongIds = state.activeSongIds.filter(id => id !== rel.songId);
               state.releases = state.releases.filter(r => r !== rel);
               logCorrection(state, adminUser, 'delete-release', releaseId, body.reason, { title: rel.title, artist: rel.artist }, null);
-              return json(res, 200, { ok: true });
+              return json(res, 200, { ok: true, replacementScheduled: true });
             }
             const v = validateReleasePatch(body);
             if (v.error) return json(res, 400, { error: v.error });

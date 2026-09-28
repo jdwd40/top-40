@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { Store, freshState, dataFile } = require('../src/state');
-const { generateForDay, catchUp } = require('../src/chart');
+const { generateForDay, catchUp, bandLeaderboard, genreTopTen } = require('../src/chart');
 const { getCatalogue } = require('../src/catalogue');
 
 function tmpFile() {
@@ -127,4 +127,35 @@ test('TOP40_DATA_FILE env override picks the data file', () => {
   } finally {
     if (prev === undefined) delete process.env.TOP40_DATA_FILE; else process.env.TOP40_DATA_FILE = prev;
   }
+});
+
+test('generated catalogue releases and snapshots carry band metadata', () => {
+  const state = freshState();
+  state.originDay = '2026-06-15';
+  generateForDay(state, state.originDay);
+  assert.ok(state.releases.every((release) => release.bandId && release.genre));
+  assert.ok(state.snapshots[0].entries.every((entry) => 'genre' in entry && 'bandId' in entry));
+});
+
+test('band leaderboard aggregates normalized bands and calculates earnings', () => {
+  const state = freshState();
+  state.releases = [
+    { releaseId: 'USR-1', artist: 'Harbor Lights', bandId: 'harbor-lights', genre: 'Rock', lifetimeSales: 100, weeksOnChart: 2, peak: 1, superBand: true },
+    { releaseId: 'USR-2', artist: ' harbor lights ', bandId: 'harbor-lights', genre: 'Rock', lifetimeSales: 50, weeksOnChart: 1, peak: 3, superBand: true },
+  ];
+  const [row] = bandLeaderboard(state);
+  assert.equal(row.bandId, 'harbor-lights');
+  assert.equal(row.lifetimeSales, 150);
+  assert.equal(row.earnings, 148.5);
+  assert.equal(row.releaseCount, 2);
+});
+
+test('genre leaderboard returns every canonical genre with at most ten entries', () => {
+  const state = freshState();
+  state.releases = [{ releaseId: 'REL-1', bandId: 'harbor-lights', artist: 'Harbor Lights', genre: 'Rock', superBand: true }];
+  state.snapshots = [{ day: '2026-06-15', entries: [{ releaseId: 'REL-1', rank: 1, title: 'Signal', artist: 'Harbor Lights', genre: 'Rock', bandId: 'harbor-lights' }] }];
+  const genres = genreTopTen(state);
+  assert.equal(Object.keys(genres).length, 10);
+  assert.equal(genres.Rock.length, 1);
+  for (const rows of Object.values(genres)) assert.ok(rows.length <= 10);
 });

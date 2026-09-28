@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { freshState } = require('../src/state');
 const { generateForDay } = require('../src/chart');
-const { weeklySales } = require('../src/sim');
+const { makeMojo, mulberry32, weeklySales } = require('../src/sim');
 const { addDays } = require('../src/dates');
 
 function makeState(seed, originDay = '2026-06-15') {
@@ -98,6 +98,16 @@ test('user mojo band gives strong (not certain) potential', () => {
   generateForDay(s, DAY);
   const user = s.releases.find(r => r.kind === 'user');
   assert.ok(user, 'pending submission debuts as a release');
-  assert.ok(user.mojo.potential >= 0.25, 'user potential sampled from a band overlapping rivals');
-  assert.ok(user.mojo.potential <= 0.95);
+  assert.equal(user.superBand, true);
+  assert.equal(user.mojo.variant, 'super band');
+  assert.ok(user.mojo.potential >= 0.9, 'user submissions use super-band potential');
+  assert.ok(user.mojo.potential <= 1);
+});
+
+test('super-band mojo stays strong and retains longer than ordinary mojo', () => {
+  const superMojo = makeMojo(mulberry32(1), 'rival', true);
+  const ordinaryMojo = makeMojo(mulberry32(1), 'rival', false);
+  assert.equal(superMojo.variant, 'super band');
+  assert.ok(superMojo.potential >= 0.9);
+  assert.ok(weeklySales({ mojo: superMojo }, 8) > weeklySales({ mojo: ordinaryMojo }, 8));
 });

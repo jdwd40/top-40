@@ -67,7 +67,7 @@ test('public chart payload shape and submission confirmation data', async (t) =>
     assert.equal(typeof e.cumulativeSales, 'number');
   }
 
-  const sub = await request(server, 'POST', '/api/submit', { body: { title: 'Test Song', artist: 'Test Artist' } });
+  const sub = await request(server, 'POST', '/api/submit', { body: { title: 'Test Song', artist: 'Test Artist', genre: 'Rock' } });
   assert.equal(sub.status, 201);
   const subData = JSON.parse(sub.text);
   assert.equal(subData.submission.status, 'pending');
@@ -91,6 +91,10 @@ test('browser-facing route assets', async (t) => {
     const res = await request(server, 'GET', p);
     assert.equal(res.status, 200, `${p} serves`);
     assert.match(res.headers['content-type'], new RegExp(type), `${p} content type`);
+    if (p === '/') {
+      assert.match(res.text, /Genre Top 10s/);
+      assert.match(res.text, /Band leaderboard/);
+    }
   }
 });
 
@@ -234,7 +238,7 @@ test('delete submission and release with reason', async (t) => {
   const cookie = await login(server);
 
   await request(server, 'GET', '/api/chart/current'); // warm up: generate today's chart
-  const sub = JSON.parse((await request(server, 'POST', '/api/submit', { body: { title: 'Delete Me', artist: 'A' } })).text);
+  const sub = JSON.parse((await request(server, 'POST', '/api/submit', { body: { title: 'Delete Me', artist: 'A', genre: 'Rock' } })).text);
   const del = await request(server, 'DELETE', `/api/admin/submission/${sub.submission.id}`, { cookie, body: { reason: 'spam' } });
   assert.equal(del.status, 200);
   const gone = await request(server, 'DELETE', `/api/admin/submission/${sub.submission.id}`, { cookie, body: { reason: 'spam' } });
@@ -249,4 +253,27 @@ test('delete submission and release with reason', async (t) => {
   const corrections = JSON.parse((await request(server, 'GET', '/api/admin/corrections', { cookie })).text).corrections;
   assert.ok(corrections.some(c => c.type === 'delete-submission'));
   assert.ok(corrections.some(c => c.type === 'delete-release'));
+});
+
+test('admin deletion hides a release and next chart replaces it', async (t) => {
+  const { server, store } = await boot();
+  t.after(() => server.close());
+  const noCookie = await request(server, 'POST', '/api/admin/release/REL-0001/delete', { body: { reason: 'remove test release' } });
+  assert.equal(noCookie.status, 401);
+  const cookie = await login(server);
+  const current = JSON.parse((await request(server, 'GET', '/api/chart/current')).text).chart;
+  const target = current.entries[0];
+  const before = JSON.stringify(store.state.snapshots[store.state.snapshots.length - 1]);
+  const shortReason = await request(server, 'POST', `/api/admin/release/${target.releaseId}/delete`, { cookie, body: { reason: 'x' } });
+  assert.equal(shortReason.status, 400);
+  const deleted = await request(server, 'POST', `/api/admin/release/${target.releaseId}/delete`, { cookie, body: { reason: 'remove test release' } });
+  assert.equal(deleted.status, 200);
+  assert.equal(JSON.parse(deleted.text).replacementScheduled, true);
+  const live = JSON.parse((await request(server, 'GET', '/api/chart/current')).text).chart;
+  assert.ok(!live.entries.some((entry) => entry.releaseId === target.releaseId));
+  assert.equal(JSON.stringify(store.state.snapshots[store.state.snapshots.length - 1]), before);
+  const releasesBefore = store.state.releases.length;
+  await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
+  assert.ok(store.state.releases.length > releasesBefore);
+  assert.ok(store.state.releases.some((release) => release.kind === 'rival' && release.releaseId !== target.releaseId));
 });
