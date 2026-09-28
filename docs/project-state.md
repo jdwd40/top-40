@@ -148,6 +148,8 @@ Deployment and live smoke verification are complete.
   charts and leaderboards, frees its catalogue song id, preserves published
   snapshots, records the correction, and schedules the normal one-rival
   replacement on the next generated chart.
+- Legacy persisted releases and snapshots are enriched from the stable catalogue
+  on public reads, so upgrading does not require deleting runtime state.
 - Admin access is documented in `README.md`; credentials come only from
   `TOP40_ADMIN_USER` and `TOP40_ADMIN_PASSWORD`.
 
@@ -155,7 +157,7 @@ Deployment and live smoke verification are complete.
 
 - **URL**: `https://jdwd40.com/top40/` (the existing site root was left
   unchanged).
-- **Revision**: `44b83b4b871eec9836d6d66ce4a19867e78012fc`.
+- **Revision**: `a7248d704071c9349651843cfd05dc5d6e8a4479`.
 - **Runtime**: `deploy@top-40.service`, bound to `127.0.0.1:4210`, with the
   JSON state file at `/home/jd/autobuild-deploy/data/top-40/state.json`.
 - **Proxy**: nginx owns the isolated `/top40/` location and forwards HTTPS

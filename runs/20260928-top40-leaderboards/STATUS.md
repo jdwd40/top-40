@@ -1,10 +1,9 @@
 # STATUS — Top 40 leaderboards enhancement
 
-- **Branch:** `factory/20260928-top40-leaderboards`
-- **Base:** `fc6d905`
-- **Latest implementation commit:** `44b83b4` (merged production revision)
-- **Verification evidence commit:** `a303f8b`
-- **Merge/deploy:** PR #1 merged and deployed on 2026-09-28.
+- **Branch:** `factory/20260928-top40-compat` (merged; remote branch deleted after merge)
+- **Base:** `a7248d7` (`factory/20260922-203921-0e8393-top40`)
+- **Latest implementation commit:** `a7248d7` (metadata compatibility fix)
+- **Merge/deploy:** PR #3 merged; final revision deployed on 2026-09-28.
 
 ## Delivered
 
@@ -18,11 +17,11 @@
 
 ## Verification
 
-- `npm test`: 53/53 passed.
+- `npm test`: 54/54 passed.
 - `npm run check`: 18 JavaScript files syntax-checked successfully.
 - `git diff --check`: clean.
 - Fresh temporary-state API smoke: `200,200,200,201`.
 
 ## Deployment note
 
-This branch is isolated and verified locally. It has not been pushed, merged, or deployed.
+The implementation and verification evidence were pushed, merged through PR #1, PR #2, and PR #3, and deployed. The final production revision is `a7248d704071c9349651843cfd05dc5d6e8a4479`; the remote feature branch was deleted after merge.

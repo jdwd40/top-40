@@ -1,17 +1,18 @@
 # Top 40 enhancement verification
 
-All commands ran from `/home/jd/workspace/top-40-leaderboards-wt` on branch `factory/20260928-top40-leaderboards`.
+All commands ran from `/home/jd/workspace/top-40-leaderboards-wt`; the compatibility fix was merged from `factory/20260928-top40-compat` and deployed to `factory/20260922-203921-0e8393-top40`.
 
 | Command | Exit | Observed result |
 |---|---:|---|
-| `npm test` | 0 | 53 tests passed, 0 failed |
+| `npm test` | 0 | 54 tests passed, 0 failed |
 | `npm run check` | 0 | `syntax OK: 18 files` |
 | `git diff --check` | 0 | no whitespace errors |
 | `git status --short` | 0 | clean before adding verification evidence |
 | fresh-state public API smoke script | 0 | status codes `200,200,200,201` for current chart, genre leaderboard, band leaderboard, and valid Rock submission |
+| compatibility API smoke with an old snapshot | 0 | current, genre, and band endpoints return hydrated R&B metadata while stored snapshot remains unchanged |
 | `git diff fc6d905..HEAD --stat` | 0 | 20 files, 1,449 insertions, 50 deletions |
 | `git diff fc6d905..HEAD --name-only` | 0 | only planned catalogue, engine, server, public UI, tests, docs, and plan/spec files |
-| `git log --oneline --decorate -12` | 0 | feature commits through `52e4c4d` present |
+| `git log --oneline --decorate -12` | 0 | merged implementation and deployment evidence through `a7248d7` present |
 
 The smoke script used a temporary state file under the system temporary directory; it did not create runtime state in the repository.
 
@@ -19,7 +20,7 @@ The smoke script used a temporary state file under the system temporary director
 
 | Check | Observed result |
 |---|---|
-| production checkout revision | `44b83b4b871eec9836d6d66ce4a19867e78012fc` |
+| production checkout revision | `a7248d704071c9349651843cfd05dc5d6e8a4479` |
 | production pinned revision | matched checkout revision |
 | `deploy@top-40.service` | active |
 | `https://jdwd40.com/top40/` | 200; contains Genre Top 10s and Band leaderboard |
@@ -30,3 +31,5 @@ The smoke script used a temporary state file under the system temporary director
 | unauthenticated admin state | 401 |
 | authenticated admin login/state | 200 / 200; admin state contains mojo |
 | live leaderboard data | 10 genre groups, 18 band rows, 24 current entries |
+| live metadata compatibility | current entry exposes `genre=Indie`, `bandId=ruby-the-static`; band leaderboard spans all ten genres |
+| read-only state preservation | SHA-256 state hash unchanged across current/genre/band API reads |
