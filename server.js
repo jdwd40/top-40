@@ -345,7 +345,7 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
               if (rel.songId) state.activeSongIds = state.activeSongIds.filter(id => id !== rel.songId);
               state.releases = state.releases.filter(r => r !== rel);
               logCorrection(state, adminUser, 'delete-release', releaseId, body.reason, { title: rel.title, artist: rel.artist }, null);
-              return json(res, 200, { ok: true });
+              return json(res, 200, { ok: true, replacementScheduled: true });
             }
             const v = validateReleasePatch(body);
             if (v.error) return json(res, 400, { error: v.error });

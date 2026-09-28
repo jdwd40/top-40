@@ -119,7 +119,7 @@ async function loadReleases() {
       box.className = 'status';
       const { status, data } = await api('POST', `/api/admin/release/${encodeURIComponent(f.dataset.id)}/delete`, { reason: f.reason.value });
       box.className = status === 200 ? 'status ok' : 'status err';
-      box.textContent = status === 200 ? 'Release deleted. Correction logged.' : (data.error || `HTTP ${status}`);
+      box.textContent = status === 200 ? 'Release removed from live lists. A replacement will arrive on the next chart. Correction logged.' : (data.error || `HTTP ${status}`);
       if (status === 200) { loadReleases(); loadCorrections(); }
     });
   });

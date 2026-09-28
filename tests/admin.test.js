@@ -250,3 +250,26 @@ test('delete submission and release with reason', async (t) => {
   assert.ok(corrections.some(c => c.type === 'delete-submission'));
   assert.ok(corrections.some(c => c.type === 'delete-release'));
 });
+
+test('admin deletion hides a release and next chart replaces it', async (t) => {
+  const { server, store } = await boot();
+  t.after(() => server.close());
+  const noCookie = await request(server, 'POST', '/api/admin/release/REL-0001/delete', { body: { reason: 'remove test release' } });
+  assert.equal(noCookie.status, 401);
+  const cookie = await login(server);
+  const current = JSON.parse((await request(server, 'GET', '/api/chart/current')).text).chart;
+  const target = current.entries[0];
+  const before = JSON.stringify(store.state.snapshots[store.state.snapshots.length - 1]);
+  const shortReason = await request(server, 'POST', `/api/admin/release/${target.releaseId}/delete`, { cookie, body: { reason: 'x' } });
+  assert.equal(shortReason.status, 400);
+  const deleted = await request(server, 'POST', `/api/admin/release/${target.releaseId}/delete`, { cookie, body: { reason: 'remove test release' } });
+  assert.equal(deleted.status, 200);
+  assert.equal(JSON.parse(deleted.text).replacementScheduled, true);
+  const live = JSON.parse((await request(server, 'GET', '/api/chart/current')).text).chart;
+  assert.ok(!live.entries.some((entry) => entry.releaseId === target.releaseId));
+  assert.equal(JSON.stringify(store.state.snapshots[store.state.snapshots.length - 1]), before);
+  const releasesBefore = store.state.releases.length;
+  await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
+  assert.ok(store.state.releases.length > releasesBefore);
+  assert.ok(store.state.releases.some((release) => release.kind === 'rival' && release.releaseId !== target.releaseId));
+});
