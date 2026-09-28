@@ -14,3 +14,19 @@ All commands ran from `/home/jd/workspace/top-40-leaderboards-wt` on branch `fac
 | `git log --oneline --decorate -12` | 0 | feature commits through `52e4c4d` present |
 
 The smoke script used a temporary state file under the system temporary directory; it did not create runtime state in the repository.
+
+## Deployment read-back
+
+| Check | Observed result |
+|---|---|
+| production checkout revision | `44b83b4b871eec9836d6d66ce4a19867e78012fc` |
+| production pinned revision | matched checkout revision |
+| `deploy@top-40.service` | active |
+| `https://jdwd40.com/top40/` | 200; contains Genre Top 10s and Band leaderboard |
+| public CSS/JS | 200 / 200 |
+| public current/genre/band APIs | 200 / 200 / 200 |
+| `/top40/health` | 200 |
+| original root site | 200 |
+| unauthenticated admin state | 401 |
+| authenticated admin login/state | 200 / 200; admin state contains mojo |
+| live leaderboard data | 10 genre groups, 18 band rows, 24 current entries |

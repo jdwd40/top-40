@@ -2,9 +2,9 @@
 
 - **Branch:** `factory/20260928-top40-leaderboards`
 - **Base:** `fc6d905`
-- **Latest implementation commit:** `52e4c4d`
-- **Verification evidence commit:** `eb79ef1`
-- **Merge/deploy:** authorized by the user in the current request; not yet performed.
+- **Latest implementation commit:** `44b83b4` (merged production revision)
+- **Verification evidence commit:** `a303f8b`
+- **Merge/deploy:** PR #1 merged and deployed on 2026-09-28.
 
 ## Delivered
 
