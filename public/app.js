@@ -202,9 +202,10 @@ function initSubmit() {
     status.className = 'status';
     const title = form.title.value.trim();
     const artist = form.artist.value.trim();
-    if (!title || !artist) {
+    const genre = form.genre.value;
+    if (!title || !artist || !genre) {
       status.className = 'status err';
-      status.textContent = 'Both title and artist are required.';
+      status.textContent = 'Title, artist, and genre are required.';
       return;
     }
     if (title.length > 80 || artist.length > 80) {
@@ -216,7 +217,7 @@ function initSubmit() {
       const res = await fetch('api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, artist }),
+        body: JSON.stringify({ title, artist, genre }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

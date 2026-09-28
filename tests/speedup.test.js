@@ -125,7 +125,7 @@ test('speed up releases pending user submissions on the new chart day', async (t
   t.after(() => server.close());
   const cookie = await login(server);
 
-  const sub = await request(server, 'POST', '/api/submit', { body: { title: 'Speed Tune', artist: 'Fast Act' } });
+  const sub = await request(server, 'POST', '/api/submit', { body: { title: 'Speed Tune', artist: 'Fast Act', genre: 'Rock' } });
   assert.equal(sub.status, 201);
 
   const res = await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });

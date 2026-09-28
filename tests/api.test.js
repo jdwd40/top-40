@@ -67,6 +67,20 @@ test('health, static index, and public chart with no mojo leak', async (t) => {
   }
 });
 
+test('submissions require a canonical genre and become super bands', async (t) => {
+  const { server, store } = await boot();
+  t.after(() => server.close());
+  const bad = await request(server, 'POST', '/api/submit', { body: { title: 'A', artist: 'B', genre: 'Opera' } });
+  assert.equal(bad.status, 400);
+  assert.equal(store.state.submissions.length, 0);
+  const good = await request(server, 'POST', '/api/submit', { body: { title: 'A', artist: 'B', genre: 'Rock' } });
+  assert.equal(good.status, 201);
+  await request(server, 'GET', '/api/chart/current');
+  const release = store.state.releases.find((row) => row.kind === 'user');
+  assert.equal(release.genre, 'Rock');
+  assert.equal(release.superBand, true);
+});
+
 test('submission validation and in-memory rate limit', async (t) => {
   const { server } = await boot();
   t.after(() => server.close());
@@ -78,10 +92,10 @@ test('submission validation and in-memory rate limit', async (t) => {
 
   let last;
   for (let i = 0; i < 6; i++) { // 4 validation failures above + these 6 = 10 allowed
-    last = await request(server, 'POST', '/api/submit', { body: { title: `Song ${i}`, artist: 'A' } });
+    last = await request(server, 'POST', '/api/submit', { body: { title: `Song ${i}`, artist: 'A', genre: 'Rock' } });
     assert.equal(last.status, 201, `submission ${i + 1} accepted`);
   }
-  const blocked = await request(server, 'POST', '/api/submit', { body: { title: 'One more', artist: 'A' } });
+  const blocked = await request(server, 'POST', '/api/submit', { body: { title: 'One more', artist: 'A', genre: 'Rock' } });
   assert.equal(blocked.status, 429, '11th submission within the window is rate limited');
 });
 

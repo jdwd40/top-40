@@ -67,7 +67,7 @@ test('public chart payload shape and submission confirmation data', async (t) =>
     assert.equal(typeof e.cumulativeSales, 'number');
   }
 
-  const sub = await request(server, 'POST', '/api/submit', { body: { title: 'Test Song', artist: 'Test Artist' } });
+  const sub = await request(server, 'POST', '/api/submit', { body: { title: 'Test Song', artist: 'Test Artist', genre: 'Rock' } });
   assert.equal(sub.status, 201);
   const subData = JSON.parse(sub.text);
   assert.equal(subData.submission.status, 'pending');
@@ -234,7 +234,7 @@ test('delete submission and release with reason', async (t) => {
   const cookie = await login(server);
 
   await request(server, 'GET', '/api/chart/current'); // warm up: generate today's chart
-  const sub = JSON.parse((await request(server, 'POST', '/api/submit', { body: { title: 'Delete Me', artist: 'A' } })).text);
+  const sub = JSON.parse((await request(server, 'POST', '/api/submit', { body: { title: 'Delete Me', artist: 'A', genre: 'Rock' } })).text);
   const del = await request(server, 'DELETE', `/api/admin/submission/${sub.submission.id}`, { cookie, body: { reason: 'spam' } });
   assert.equal(del.status, 200);
   const gone = await request(server, 'DELETE', `/api/admin/submission/${sub.submission.id}`, { cookie, body: { reason: 'spam' } });
