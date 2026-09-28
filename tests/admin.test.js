@@ -91,6 +91,10 @@ test('browser-facing route assets', async (t) => {
     const res = await request(server, 'GET', p);
     assert.equal(res.status, 200, `${p} serves`);
     assert.match(res.headers['content-type'], new RegExp(type), `${p} content type`);
+    if (p === '/') {
+      assert.match(res.text, /Genre Top 10s/);
+      assert.match(res.text, /Band leaderboard/);
+    }
   }
 });
 

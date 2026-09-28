@@ -168,6 +168,29 @@ async function loadAllTime() {
   }
 }
 
+async function loadGenres() {
+  try {
+    const { genres } = await getJson('/api/chart/genres');
+    const cards = Object.entries(genres).map(([genre, rows]) => `<section class="panel"><h3>${esc(genre)}</h3>${rows.length ? `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Song</th><th scope="col">Band</th><th scope="col">Peak</th></tr></thead><tbody>${rows.slice(0, 10).map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.title)}<br><span class="hint">${fmt.format(r.weeklySales)} this week</span></td><td>${esc(r.bandName || r.artist)}</td><td>${r.peak ?? '—'}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">No chart entries yet.</p>'}</section>`).join('');
+    $('#genres-body').innerHTML = cards;
+    $('#genres-offline').hidden = true;
+    announce('Genre Top 10s loaded.');
+  } catch {
+    $('#genres-offline').hidden = false;
+  }
+}
+
+async function loadBands() {
+  try {
+    const { bands } = await getJson('/api/chart/bands');
+    $('#bands-body').innerHTML = bands.length ? `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Band</th><th scope="col">Earnings</th><th scope="col">Sales</th><th scope="col">Releases</th><th scope="col">Best peak</th><th scope="col">Weeks</th></tr></thead><tbody>${bands.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.bandName)}${b.superBand ? ' <span class="badge">SUPER BAND</span>' : ''}<br><span class="hint">${esc(b.genres.join(', '))}</span></td><td>£${Number(b.earnings).toFixed(2)}</td><td>${fmt.format(b.lifetimeSales)}</td><td>${b.releaseCount}</td><td>${b.bestPeak ?? '—'}</td><td>${b.totalWeeks}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">No band earnings yet.</p>';
+    $('#bands-offline').hidden = true;
+    announce('Band leaderboard loaded.');
+  } catch {
+    $('#bands-offline').hidden = false;
+  }
+}
+
 async function showSong(releaseId) {
   try {
     const d = await getJson(`/api/release/${encodeURIComponent(releaseId)}/history`);
@@ -241,12 +264,14 @@ function switchView(name) {
   document.querySelectorAll('[role="tab"]').forEach((t) => {
     t.setAttribute('aria-selected', String(t.dataset.view === name));
   });
-  for (const v of ['current', 'history', 'alltime', 'submit']) {
+  for (const v of ['current', 'history', 'alltime', 'genres', 'bands', 'submit']) {
     $(`#view-${v}`).hidden = v !== name;
   }
   $('#view-song').hidden = true;
   if (name === 'history') loadHistory();
   if (name === 'alltime') loadAllTime();
+  if (name === 'genres') loadGenres();
+  if (name === 'bands') loadBands();
 }
 
 document.querySelectorAll('[role="tab"]').forEach((t) => {
@@ -256,6 +281,8 @@ $('#song-back').addEventListener('click', () => switchView('current'));
 $('#retry-chart').addEventListener('click', loadCurrent);
 $('#retry-history').addEventListener('click', loadHistory);
 $('#retry-alltime').addEventListener('click', loadAllTime);
+$('#retry-genres').addEventListener('click', loadGenres);
+$('#retry-bands').addEventListener('click', loadBands);
 
 document.getElementById('chartlist').addEventListener('click', (ev) => {
   const b = ev.target.closest('.songlink');
