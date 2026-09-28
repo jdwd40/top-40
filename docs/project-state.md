@@ -151,18 +151,19 @@ Deployment and live smoke verification are complete.
 - Admin access is documented in `README.md`; credentials come only from
   `TOP40_ADMIN_USER` and `TOP40_ADMIN_PASSWORD`.
 
-## Deployment (verified 2026-09-23)
+## Deployment (verified 2026-09-28)
 
 - **URL**: `https://jdwd40.com/top40/` (the existing site root was left
   unchanged).
-- **Revision**: `040788ee13bfa07fcec556bc949d189e552cfa15`.
+- **Revision**: `44b83b4b871eec9836d6d66ce4a19867e78012fc`.
 - **Runtime**: `deploy@top-40.service`, bound to `127.0.0.1:4210`, with the
-  JSON state file outside the checkout at the server's persistent data path.
+  JSON state file at `/home/jd/autobuild-deploy/data/top-40/state.json`.
 - **Proxy**: nginx owns the isolated `/top40/` location and forwards HTTPS
   headers so secure admin cookies work in production.
-- **Checks**: health, public HTML/CSS/JS, chart API, root-site preservation,
-  admin 401 boundary, admin login/state, pure preview, desktop browser load,
-  and the deployed revision were verified after reload.
+- **Checks**: 53/53 tests and 18 syntax checks on the deployed checkout;
+  public HTML/CSS/JS, current/genre/band APIs, root-site preservation,
+  unauthenticated admin rejection, authenticated admin state, service health,
+  and deployed revision were verified after restart.
 
 ## Runtime state / reuse policy
 
