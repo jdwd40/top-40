@@ -62,6 +62,16 @@ function createRivalRelease(state, day, rng) {
   };
 }
 
+function releaseMetadata(release) {
+  const catalogueSong = release.songId && getCatalogue().find((song) => song.song_id === release.songId);
+  return {
+    bandId: catalogueSong?.bandId || release.bandId || bandIdFor(release.artist || catalogueSong?.artist || ''),
+    bandName: release.artist || catalogueSong?.artist || '',
+    genre: catalogueSong?.genre || (GENRES.includes(release.genre) ? release.genre : 'Pop'),
+    superBand: catalogueSong ? Boolean(catalogueSong.superBand) : Boolean(release.superBand),
+  };
+}
+
 // Generate (or return the existing) snapshot for one chart day.
 // Mutates state; caller persists via the store lock.
 function generateForDay(state, day) {
@@ -114,6 +124,7 @@ function generateForDay(state, day) {
   top.forEach((row, i) => {
     const rank = i + 1;
     const { rel, sales, w } = row;
+    const metadata = releaseMetadata(rel);
     // Count chart appearances, not calendar age: after an off-chart gap the
     // number must not include the missed weeks.
     rel.weeksOnChart += 1;
@@ -125,10 +136,10 @@ function generateForDay(state, day) {
       songId: rel.songId,
       title: rel.title,
       artist: rel.artist,
-      bandId: rel.bandId,
-      bandName: rel.artist,
-      genre: rel.genre || 'Pop',
-      superBand: Boolean(rel.superBand),
+      bandId: metadata.bandId,
+      bandName: metadata.bandName,
+      genre: metadata.genre,
+      superBand: metadata.superBand,
       weeklySales: sales,
       cumulativeSales: rel.lifetimeSales,
       weeksOnChart: rel.weeksOnChart,
@@ -181,43 +192,62 @@ function allTime(state, limit = 100) {
     .slice()
     .sort((a, b) => b.lifetimeSales - a.lifetimeSales || (a.releaseId < b.releaseId ? -1 : 1))
     .slice(0, limit)
-    .map(r => ({
-      releaseId: r.releaseId,
-      songId: r.songId,
-      title: r.title,
-      artist: r.artist,
-      bandId: r.bandId || bandIdFor(r.artist || ''),
-      bandName: r.artist,
-      genre: r.genre || 'Pop',
-      superBand: Boolean(r.superBand),
-      kind: r.kind,
-      lifetimeSales: r.lifetimeSales,
-      peak: r.peak,
-      weeksOnChart: r.weeksOnChart,
-    }));
+    .map(r => {
+      const metadata = releaseMetadata(r);
+      return {
+        releaseId: r.releaseId,
+        songId: r.songId,
+        title: r.title,
+        artist: r.artist,
+        bandId: metadata.bandId,
+        bandName: metadata.bandName,
+        genre: metadata.genre,
+        superBand: metadata.superBand,
+        kind: r.kind,
+        lifetimeSales: r.lifetimeSales,
+        peak: r.peak,
+        weeksOnChart: r.weeksOnChart,
+      };
+    });
+}
+
+function publicSnapshot(state, snapshot, { liveOnly = false } = {}) {
+  if (!snapshot) return null;
+  const releases = new Map(state.releases.map((release) => [release.releaseId, release]));
+  const liveIds = liveOnly ? new Set(releases.keys()) : null;
+  return {
+    ...snapshot,
+    entries: snapshot.entries
+      .filter((entry) => !liveIds || liveIds.has(entry.releaseId))
+      .map((entry, index) => {
+        const release = releases.get(entry.releaseId);
+        const metadata = releaseMetadata(release || entry);
+        return {
+          ...entry,
+          rank: liveOnly ? index + 1 : entry.rank,
+          bandId: release ? metadata.bandId : (entry.bandId || metadata.bandId),
+          bandName: entry.bandName || metadata.bandName || entry.artist,
+          genre: release ? metadata.genre : (GENRES.includes(entry.genre) ? entry.genre : metadata.genre),
+          superBand: release ? metadata.superBand : (entry.superBand ?? metadata.superBand),
+        };
+      }),
+  };
 }
 
 function currentSnapshot(state) {
   const snapshot = state.snapshots[state.snapshots.length - 1] || null;
-  if (!snapshot) return null;
-  const liveIds = new Set(state.releases.map((release) => release.releaseId));
-  return {
-    ...snapshot,
-    entries: snapshot.entries
-      .filter((entry) => liveIds.has(entry.releaseId))
-      .map((entry, index) => ({ ...entry, rank: index + 1 })),
-  };
+  return publicSnapshot(state, snapshot, { liveOnly: true });
 }
 
 function bandLeaderboard(state, limit = 100) {
   const groups = new Map();
   for (const release of state.releases) {
-    const bandId = release.bandId || bandIdFor(release.artist || '');
+    const metadata = releaseMetadata(release);
+    const bandId = metadata.bandId;
     if (!bandId) continue;
-    const genre = GENRES.includes(release.genre) ? release.genre : 'Pop';
     const row = groups.get(bandId) || {
       bandId,
-      bandName: (release.artist || bandId).trim(),
+      bandName: metadata.bandName.trim() || bandId,
       genres: new Set(),
       releaseCount: 0,
       lifetimeSales: 0,
@@ -225,7 +255,7 @@ function bandLeaderboard(state, limit = 100) {
       bestPeak: null,
       superBand: false,
     };
-    row.genres.add(genre);
+    row.genres.add(metadata.genre);
     row.releaseCount += 1;
     row.lifetimeSales += Number(release.lifetimeSales) || 0;
     row.totalWeeks += Number(release.weeksOnChart) || 0;
@@ -273,4 +303,4 @@ function previewNext(state) {
   return { day, preview: true, snapshot };
 }
 
-module.exports = { generateForDay, catchUp, allTime, bandLeaderboard, genreTopTen, currentSnapshot, previewNext, RETIRE_SALES };
+module.exports = { generateForDay, catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext, RETIRE_SALES };
