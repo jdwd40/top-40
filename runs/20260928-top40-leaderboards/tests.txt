@@ -1,0 +1,16 @@
+# Top 40 enhancement verification
+
+All commands ran from `/home/jd/workspace/top-40-leaderboards-wt` on branch `factory/20260928-top40-leaderboards`.
+
+| Command | Exit | Observed result |
+|---|---:|---|
+| `npm test` | 0 | 53 tests passed, 0 failed |
+| `npm run check` | 0 | `syntax OK: 18 files` |
+| `git diff --check` | 0 | no whitespace errors |
+| `git status --short` | 0 | clean before adding verification evidence |
+| fresh-state public API smoke script | 0 | status codes `200,200,200,201` for current chart, genre leaderboard, band leaderboard, and valid Rock submission |
+| `git diff fc6d905..HEAD --stat` | 0 | 20 files, 1,449 insertions, 50 deletions |
+| `git diff fc6d905..HEAD --name-only` | 0 | only planned catalogue, engine, server, public UI, tests, docs, and plan/spec files |
+| `git log --oneline --decorate -12` | 0 | feature commits through `52e4c4d` present |
+
+The smoke script used a temporary state file under the system temporary directory; it did not create runtime state in the repository.
