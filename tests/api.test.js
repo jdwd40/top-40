@@ -115,3 +115,22 @@ test('admin session boundary behind signed HttpOnly SameSite cookie', async (t) 
   const afterLogout = await request(server, 'GET', '/api/admin/state', { cookie });
   assert.equal(afterLogout.status, 401, 'logged-out session rejected');
 });
+
+test('public band and genre leaderboards expose sorted safe payloads', async (t) => {
+  const { server } = await boot();
+  t.after(() => server.close());
+
+  const bands = await request(server, 'GET', '/api/chart/bands');
+  assert.equal(bands.status, 200);
+  const bandData = JSON.parse(bands.text);
+  assert.ok(bandData.bands.length > 0);
+  assert.ok(bandData.bands.every((row, index, rows) => index === 0 || rows[index - 1].earnings >= row.earnings));
+  assert.ok(!bands.text.includes('mojo'));
+
+  const genres = await request(server, 'GET', '/api/chart/genres');
+  assert.equal(genres.status, 200);
+  const genreData = JSON.parse(genres.text);
+  assert.equal(Object.keys(genreData.genres).length, 10);
+  assert.ok(Object.values(genreData.genres).every((rows) => rows.length <= 10));
+  assert.ok(!genres.text.includes('mojo'));
+});

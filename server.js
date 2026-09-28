@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Store } = require('./src/state');
-const { catchUp, allTime, previewNext, generateForDay } = require('./src/chart');
+const { catchUp, allTime, bandLeaderboard, genreTopTen, currentSnapshot, previewNext, generateForDay } = require('./src/chart');
 const { currentChartDay, nextBoundary, addDays } = require('./src/dates');
 const auth = require('./src/auth');
 
@@ -183,8 +183,19 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
       if (req.method === 'GET' && p === '/api/chart/current') {
         return await store.update(async (state) => {
           await ensureFresh(state);
-          const snap = state.snapshots[state.snapshots.length - 1] || null;
-          return json(res, 200, { chart: snap });
+          return json(res, 200, { chart: currentSnapshot(state) });
+        });
+      }
+      if (req.method === 'GET' && p === '/api/chart/genres') {
+        return await store.update(async (state) => {
+          await ensureFresh(state);
+          return json(res, 200, { genres: genreTopTen(state) });
+        });
+      }
+      if (req.method === 'GET' && p === '/api/chart/bands') {
+        return await store.update(async (state) => {
+          await ensureFresh(state);
+          return json(res, 200, { bands: bandLeaderboard(state) });
         });
       }
       if (req.method === 'GET' && p === '/api/chart/history') {

@@ -4,7 +4,7 @@
 // Exactly-once: a day that already has a snapshot is never regenerated, so
 // repeated or concurrent calls never double-count sales.
 
-const { getCatalogue, bandIdFor } = require('./catalogue');
+const { getCatalogue, bandIdFor, GENRES } = require('./catalogue');
 const { currentChartDay, addDays, dayDiff } = require('./dates');
 const { hashSeed, mulberry32, makeMojo, weeklySales } = require('./sim');
 
@@ -186,11 +186,81 @@ function allTime(state, limit = 100) {
       songId: r.songId,
       title: r.title,
       artist: r.artist,
+      bandId: r.bandId || bandIdFor(r.artist || ''),
+      bandName: r.artist,
+      genre: r.genre || 'Pop',
+      superBand: Boolean(r.superBand),
       kind: r.kind,
       lifetimeSales: r.lifetimeSales,
       peak: r.peak,
       weeksOnChart: r.weeksOnChart,
     }));
+}
+
+function currentSnapshot(state) {
+  const snapshot = state.snapshots[state.snapshots.length - 1] || null;
+  if (!snapshot) return null;
+  const liveIds = new Set(state.releases.map((release) => release.releaseId));
+  return {
+    ...snapshot,
+    entries: snapshot.entries
+      .filter((entry) => liveIds.has(entry.releaseId))
+      .map((entry, index) => ({ ...entry, rank: index + 1 })),
+  };
+}
+
+function bandLeaderboard(state, limit = 100) {
+  const groups = new Map();
+  for (const release of state.releases) {
+    const bandId = release.bandId || bandIdFor(release.artist || '');
+    if (!bandId) continue;
+    const genre = GENRES.includes(release.genre) ? release.genre : 'Pop';
+    const row = groups.get(bandId) || {
+      bandId,
+      bandName: (release.artist || bandId).trim(),
+      genres: new Set(),
+      releaseCount: 0,
+      lifetimeSales: 0,
+      totalWeeks: 0,
+      bestPeak: null,
+      superBand: false,
+    };
+    row.genres.add(genre);
+    row.releaseCount += 1;
+    row.lifetimeSales += Number(release.lifetimeSales) || 0;
+    row.totalWeeks += Number(release.weeksOnChart) || 0;
+    if (release.peak !== null && release.peak !== undefined) row.bestPeak = row.bestPeak === null ? release.peak : Math.min(row.bestPeak, release.peak);
+    row.superBand = row.superBand || Boolean(release.superBand);
+    groups.set(bandId, row);
+  }
+  return [...groups.values()]
+    .map((row) => ({
+      ...row,
+      genres: [...row.genres],
+      earnings: Number((row.lifetimeSales * 0.99).toFixed(2)),
+    }))
+    .sort((a, b) => b.earnings - a.earnings || (a.bandId < b.bandId ? -1 : 1))
+    .slice(0, limit);
+}
+
+function genreTopTen(state) {
+  const groups = Object.fromEntries(GENRES.map((genre) => [genre, []]));
+  const snapshot = currentSnapshot(state);
+  if (!snapshot) return groups;
+  const releases = new Map(state.releases.map((release) => [release.releaseId, release]));
+  for (const entry of snapshot.entries) {
+    const release = releases.get(entry.releaseId);
+    const genre = GENRES.includes(entry.genre) ? entry.genre : (GENRES.includes(release?.genre) ? release.genre : 'Pop');
+    groups[genre].push({
+      ...entry,
+      genre,
+      bandId: entry.bandId || release?.bandId || bandIdFor(entry.artist || release?.artist || ''),
+      bandName: entry.bandName || release?.artist || entry.artist,
+      superBand: entry.superBand ?? Boolean(release?.superBand),
+    });
+  }
+  for (const genre of GENRES) groups[genre] = groups[genre].slice(0, 10);
+  return groups;
 }
 
 // Hypothetical snapshot for the NEXT chart day. Pure with respect to the
@@ -203,4 +273,4 @@ function previewNext(state) {
   return { day, preview: true, snapshot };
 }
 
-module.exports = { generateForDay, catchUp, allTime, previewNext, RETIRE_SALES };
+module.exports = { generateForDay, catchUp, allTime, bandLeaderboard, genreTopTen, currentSnapshot, previewNext, RETIRE_SALES };
