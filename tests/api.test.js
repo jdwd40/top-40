@@ -67,6 +67,13 @@ test('health, static index, and public chart with no mojo leak', async (t) => {
   }
 });
 
+test('README documents admin access without credentials', () => {
+  const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+  assert.match(readme, /\/top40\/admin\.html/);
+  assert.match(readme, /TOP40_ADMIN_USER/);
+  assert.match(readme, /TOP40_ADMIN_PASSWORD/);
+});
+
 test('submissions require a canonical genre and become super bands', async (t) => {
   const { server, store } = await boot();
   t.after(() => server.close());

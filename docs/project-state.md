@@ -5,8 +5,8 @@
 A dependency-light Node.js (CommonJS, standard library only) application:
 
 - **Catalogue**: `ridiculous-top-40-song-catalogue.md` is parsed at runtime.
-  The 100 `SONG-xxx` entries are the single source of truth; nothing is
-  duplicated by hand.
+  The preserved legacy entries remain alongside an expanded catalogue of 400
+  realistic fictional songs with stable band, genre, and super-band metadata.
 - **Chart days**: Europe/London local dates with a documented daily boundary
   at **20:00 Europe/London**. Each chart day is the window
   `[20:00 London day D, 20:00 London day D+1)`, so visitors can browse chart D
@@ -14,19 +14,21 @@ A dependency-light Node.js (CommonJS, standard library only) application:
   `Intl.DateTimeFormat`, with hand-verified boundary tests.
 - **Simulation**: fully deterministic from a persisted game seed plus a
   hidden per-release `mojo` block (potential, debut, climb, plateau, decline,
-  variation, variant curve, weekly noise). Variant curves: spike, steady,
-  short hit, burner, long decline. User submissions sample a stronger
-  potential band, giving a real but unguaranteed shot at the Top 10 / No. 1.
+  variation, variant curve, weekly noise). Super bands receive stronger,
+  longer-lasting curves while ordinary bands have more variable runs. User
+  submissions are always marked as super bands and still use deterministic
+  chart competition.
 - **Persistence**: JSON state file with atomic temp-file rename + fsync and an
   in-process async write lock. `TOP40_DATA_FILE` overrides the location
   (tests and deployment).
 - **Generation**: one idempotent function per chart day plus missed-day
   catch-up in order. Repeated or concurrent calls never duplicate sales or
   snapshots; already-published snapshots are never regenerated.
-- **HTTP API**: health, public state/current chart/history/all-time, release
-  submission (validated, length-limited, in-memory rate limit), and admin
-  endpoints behind a signed HttpOnly SameSite=Lax session cookie. Hidden mojo
-  is never exposed publicly.
+- **HTTP API**: health, public state/current chart/history/all-time, public band
+  earnings (`/api/chart/bands`), canonical genre top tens
+  (`/api/chart/genres`), genre-aware release submission (validated,
+  length-limited, in-memory rate limit), and admin endpoints behind a signed
+  HttpOnly SameSite=Lax session cookie. Hidden mojo is never exposed publicly.
 - **Tests**: assert-based `node:test` suites for date boundaries (GMT/BST/DST),
   catalogue parsing, simulation determinism, hidden mojo, ranking tie-breaks,
   exactly-once/repeated/concurrent generation, catch-up, restart persistence,
@@ -129,6 +131,25 @@ smoke verification are recorded below.
   user-submission release counting, and branding payloads.
 
 Deployment and live smoke verification are complete.
+
+## Current leaderboards and catalogue feature
+
+- The expanded catalogue contains 400 unique songs while preserving the
+  original legacy songs. Each row has a canonical genre, normalized band id,
+  and super-band flag; super bands chart with stronger and longer curves.
+- Public APIs `/api/chart/bands` and `/api/chart/genres` expose the band
+  earnings leaderboard and a Top 10 for each of the ten canonical genres.
+  Earnings are fictional at £0.99 per simulated sale.
+- Public tabs render Genre Top 10s and the Band leaderboard with escaped values,
+  mobile-friendly tables, and retryable offline states.
+- User submissions require a canonical genre and are persisted with
+  `superBand: true`; legacy persisted submissions default to Pop on release.
+- Admin release deletion requires a reason, removes the release from live
+  charts and leaderboards, frees its catalogue song id, preserves published
+  snapshots, records the correction, and schedules the normal one-rival
+  replacement on the next generated chart.
+- Admin access is documented in `README.md`; credentials come only from
+  `TOP40_ADMIN_USER` and `TOP40_ADMIN_PASSWORD`.
 
 ## Deployment (verified 2026-09-23)
 
