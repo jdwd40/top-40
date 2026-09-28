@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { Store, freshState, dataFile } = require('../src/state');
-const { generateForDay, catchUp, bandLeaderboard, genreTopTen } = require('../src/chart');
+const { generateForDay, catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot } = require('../src/chart');
 const { getCatalogue } = require('../src/catalogue');
 
 function tmpFile() {
@@ -135,6 +135,30 @@ test('generated catalogue releases and snapshots carry band metadata', () => {
   generateForDay(state, state.originDay);
   assert.ok(state.releases.every((release) => release.bandId && release.genre));
   assert.ok(state.snapshots[0].entries.every((entry) => 'genre' in entry && 'bandId' in entry));
+});
+
+test('legacy persisted chart data is enriched without rewriting its snapshot', () => {
+  const state = freshState();
+  state.releases = [{
+    releaseId: 'REL-OLD', kind: 'rival', songId: 'SONG-001', title: 'All Men Are on Mute', artist: 'Velvet Avenue',
+    lifetimeSales: 100, weeksOnChart: 1, peak: 1,
+  }];
+  state.snapshots = [{
+    day: '2026-06-15', entries: [{
+      rank: 1, releaseId: 'REL-OLD', songId: 'SONG-001', title: 'All Men Are on Mute', artist: 'Velvet Avenue',
+      bandId: 'legacy-velvet', genre: 'Pop', superBand: true,
+      weeklySales: 100, cumulativeSales: 100, weeksOnChart: 1, peak: 1,
+    }],
+  }];
+
+  const current = currentSnapshot(state);
+  assert.equal(current.entries[0].genre, 'R&B');
+  assert.equal(current.entries[0].bandId, 'velvet-avenue');
+  assert.equal(current.entries[0].superBand, false);
+  assert.equal(bandLeaderboard(state)[0].genres[0], 'R&B');
+  assert.equal(allTime(state)[0].genre, 'R&B');
+  assert.equal(publicSnapshot(state, state.snapshots[0]).entries[0].genre, 'R&B');
+  assert.equal(state.snapshots[0].entries[0].genre, 'Pop', 'stored history remains immutable');
 });
 
 test('band leaderboard aggregates normalized bands and calculates earnings', () => {

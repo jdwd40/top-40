@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Store } = require('./src/state');
-const { catchUp, allTime, bandLeaderboard, genreTopTen, currentSnapshot, previewNext, generateForDay } = require('./src/chart');
+const { catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext, generateForDay } = require('./src/chart');
 const { currentChartDay, nextBoundary, addDays } = require('./src/dates');
 const { GENRES } = require('./src/catalogue');
 const auth = require('./src/auth');
@@ -205,7 +205,7 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
       if (req.method === 'GET' && p === '/api/chart/history') {
         return await store.update(async (state) => {
           await ensureFresh(state);
-          return json(res, 200, { snapshots: state.snapshots });
+          return json(res, 200, { snapshots: state.snapshots.map((snapshot) => publicSnapshot(state, snapshot)) });
         });
       }
       if (req.method === 'GET' && p === '/api/chart/all-time') {
