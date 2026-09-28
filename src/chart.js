@@ -4,7 +4,7 @@
 // Exactly-once: a day that already has a snapshot is never regenerated, so
 // repeated or concurrent calls never double-count sales.
 
-const { getCatalogue } = require('./catalogue');
+const { getCatalogue, bandIdFor } = require('./catalogue');
 const { currentChartDay, addDays, dayDiff } = require('./dates');
 const { hashSeed, mulberry32, makeMojo, weeklySales } = require('./sim');
 
@@ -22,8 +22,11 @@ function createUserRelease(state, sub, day, rng) {
     songId: null,
     title: sub.title,
     artist: sub.artist,
+    bandId: sub.bandId || bandIdFor(sub.artist),
+    genre: sub.genre || 'Pop',
+    superBand: true,
     releasedDay: day,
-    mojo: makeMojo(rng, 'user'),
+    mojo: makeMojo(rng, 'user', true),
     weeksOnChart: 0,
     peak: null,
     lifetimeSales: 0,
@@ -36,7 +39,9 @@ function createRivalRelease(state, day, rng) {
   const catalogue = getCatalogue();
   const free = catalogue.filter(s => !state.activeSongIds.includes(s.song_id));
   if (free.length === 0) return null; // catalogue exhausted; wait for retirements
-  const song = free[Math.floor(rng() * free.length)];
+  const current = free.filter(s => !s.legacy);
+  const pool = current.length ? current : free;
+  const song = pool[Math.floor(rng() * pool.length)];
   state.activeSongIds.push(song.song_id);
   return {
     releaseId: newReleaseId(state, 'rival'),
@@ -44,8 +49,11 @@ function createRivalRelease(state, day, rng) {
     songId: song.song_id,
     title: song.title,
     artist: song.artist,
+    bandId: song.bandId,
+    genre: song.genre,
+    superBand: song.superBand,
     releasedDay: day,
-    mojo: makeMojo(rng, 'rival'),
+    mojo: makeMojo(rng, 'rival', song.superBand),
     weeksOnChart: 0,
     peak: null,
     lifetimeSales: 0,
@@ -117,6 +125,10 @@ function generateForDay(state, day) {
       songId: rel.songId,
       title: rel.title,
       artist: rel.artist,
+      bandId: rel.bandId,
+      bandName: rel.artist,
+      genre: rel.genre || 'Pop',
+      superBand: Boolean(rel.superBand),
       weeklySales: sales,
       cumulativeSales: rel.lifetimeSales,
       weeksOnChart: rel.weeksOnChart,

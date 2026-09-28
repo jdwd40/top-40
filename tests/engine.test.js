@@ -128,3 +128,11 @@ test('TOP40_DATA_FILE env override picks the data file', () => {
     if (prev === undefined) delete process.env.TOP40_DATA_FILE; else process.env.TOP40_DATA_FILE = prev;
   }
 });
+
+test('generated catalogue releases and snapshots carry band metadata', () => {
+  const state = freshState();
+  state.originDay = '2026-06-15';
+  generateForDay(state, state.originDay);
+  assert.ok(state.releases.every((release) => release.bandId && release.genre));
+  assert.ok(state.snapshots[0].entries.every((entry) => 'genre' in entry && 'bandId' in entry));
+});
