@@ -296,6 +296,7 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
             const prevSnapshot = state.snapshots.length ? state.snapshots[state.snapshots.length - 1] : null;
             const day = state.lastGeneratedDay ? addDays(state.lastGeneratedDay, 1) : state.originDay;
             const { snapshot, created } = generateForDay(state, day);
+            state.lastScheduledDay ||= currentChartDay();
             if (!created) {
               return { ok: true, created: false, day: snapshot.day, entries: snapshot.entries.length, added: 0, released: 0, departed: 0 };
             }

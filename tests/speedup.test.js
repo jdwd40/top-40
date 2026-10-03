@@ -12,7 +12,8 @@ process.env.TOP40_ADMIN_PASSWORD = 'secret-pass';
 
 const { Store } = require('../src/state');
 const { createServer } = require('../server');
-const { currentChartDay, addDays } = require('../src/dates');
+const { currentChartDay, addDays, chartDayStart } = require('../src/dates');
+const { catchUp } = require('../src/chart');
 
 const sessionSecret = 'test-session-secret';
 
@@ -74,6 +75,7 @@ test('speed up advances exactly one chart week per call and persists across rest
   assert.equal(d1.added, 40, 'launch seeds 40 rivals');
   assert.equal(d1.released, 0);
   assert.equal(d1.departed, 0);
+  assert.equal(store.state.lastScheduledDay, currentChartDay(), 'speed-up establishes the real-day cursor');
 
   const r2 = await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
   assert.equal(r2.status, 200);
@@ -98,6 +100,11 @@ test('speed up advances exactly one chart week per call and persists across rest
   await store2.init();
   assert.equal(store2.state.snapshots.length, 3, 'snapshots retained on restart');
   assert.equal(store2.state.lastGeneratedDay, addDays(originDay, 2), 'generator cursor retained');
+  assert.equal(store2.state.lastScheduledDay, currentChartDay(), 'speed-up leaves the scheduling cursor unchanged');
+  const tomorrow = chartDayStart(addDays(currentChartDay(), 1));
+  const daily = await store2.update(state => catchUp(state, tomorrow));
+  assert.equal(daily.filter(result => result.created).length, 1, 'daily advancement works after speed-up and restart');
+  assert.equal(store2.state.lastGeneratedDay, addDays(originDay, 3));
 });
 
 test('speed up generates exactly one day even when the generator is behind', async (t) => {
