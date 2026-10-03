@@ -52,6 +52,13 @@ Genre Top 10s cover Hip-Hop, Dance/EDM, Rock, Pop, R&B, Country, Indie, Soul,
 Alternative and Electronic. Band earnings use £0.99 per simulated sale. Public
 current/history, release histories, all-time and leaderboards never expose mojo.
 
+`GET /api/chart/snapshot` is a genuinely read-only observation endpoint for
+external dashboards: it returns the same sanitized public chart projection as
+`/api/chart/current` plus the next hourly boundary from a single in-memory
+observation, and never touches the write path (no catch-up, no generation, no
+persistence) — publication stays with the hourly timer/catch-up owner. The
+other public GETs still run catch-up under the Store lock as before.
+
 ## Run it
 
 ```sh

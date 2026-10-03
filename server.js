@@ -190,6 +190,23 @@ function createServer({ store, sessionSecret, autoCatchUp = true, clock = () => 
           return json(res, 200, { chart: currentSnapshot(state) });
         });
       }
+      if (req.method === 'GET' && p === '/api/chart/snapshot') {
+        // Genuinely read-only observation for external dashboards. Unlike the
+        // routes above this NEVER touches the write path: no store.update, no
+        // ensureFresh/catch-up, no generation, no _persist. The in-memory
+        // state is read once and chart + nextBoundary are projected
+        // synchronously from that single observation (no await in between, so
+        // nothing can interleave). Publication stays with the hourly
+        // timer/catch-up owner — an overdue chart is reported as-is, never
+        // generated here. Same sanitized public projection as
+        // /api/chart/current; no admin/state internals beyond the public
+        // boundary timestamp.
+        const state = store.state;
+        if (!state) return json(res, 503, { error: 'store not ready' });
+        const body = { chart: currentSnapshot(state), nextBoundary: nextBoundary(clock()).toISOString() };
+        res.setHeader('Cache-Control', 'no-store');
+        return json(res, 200, body);
+      }
       if (req.method === 'GET' && p === '/api/chart/genres') {
         return await store.update(async (state) => {
           await ensureFresh(state);
