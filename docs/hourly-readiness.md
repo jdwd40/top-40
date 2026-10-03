@@ -1,4 +1,18 @@
-# Hourly simulation — local readiness
+# Hourly simulation — readiness and deployment
+
+## Production read-back (2026-10-03)
+
+Merged PR #6 and deployed `14b14cb3f6fed41da7c9c6eff0b30b9e6a91b697`.
+Service active; checkout and deploy pin match. Explicit offline reset followed
+copy rehearsal and SHA-256 backup verification. Current chart/health report
+`2026-10-03T17:00:00.000Z`, next boundary `2026-10-03T18:00:00.000Z`;
+four new songs, one history snapshot, four all-time/band rows, ten genre groups.
+Admin login/logout passed; preview leaves state unchanged; speed-up returns 409.
+Assets and original root site are HTTP 200. Previous game retained privately.
+No actual future hour was published for verification; timer and next-boundary
+behavior are covered by automated tests. Visual Chrome capture still timed out.
+
+The remaining sections document the pre-deployment implementation evidence.
 
 Base: production `34a4b9a8dca6362a114b25ef2f8430f06fde7a2a`.
 Worktree: `/home/jd/workspace/top-40-hourly-wt`.

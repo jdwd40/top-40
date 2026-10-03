@@ -1,5 +1,29 @@
 # Top 40 — project state
 
+## Current release — real-time hourly (2026-10-03)
+
+This section supersedes the historical daily-release notes below.
+
+- Production: `https://jdwd40.com/top40/`.
+- Runtime revision: `14b14cb3f6fed41da7c9c6eff0b30b9e6a91b697` (PR #6).
+- v2 JSON game reset explicitly at `2026-10-03T17:00:00.000Z`; the complete
+  previous game is privately backed up outside the checkout/public directory.
+- Four initial songs; four new rival releases each real UTC hour until the chart
+  first reaches 40, then one per hour. A process-local timer advances without visits.
+- London HH:mm/BST/GMT history grouped by actual calendar date; no simulated
+  future dates or publishing via speed-up. Pending submissions debut next real hour.
+- Catalogue: 2,640 unique songs, including 100 archived legacy songs excluded
+  from rival generation; 308 current bands across ten genres.
+- All prior live charts, submissions, corrections, sales and leaderboards cleared;
+  current results derive only from the new game. Existing admin credentials unchanged.
+- Local and production checks: 70 tests passed; 23 JavaScript syntax checks passed.
+  External current/history/genres/bands/all-time/health and assets verified, authenticated
+  admin login/logout verified, preview preserves state, speed-up returns 409, root site preserved.
+- Full browser visual evidence remains blocked by Chrome timeouts; actual client
+  rendering logic is covered by the test suite. See `runs/20261003-hourly/STATUS.md`.
+
+## Historical release notes (superseded)
+
 ## What exists (chunk 1: core, ~20% of the full build)
 
 A dependency-light Node.js (CommonJS, standard library only) application:
