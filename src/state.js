@@ -20,6 +20,7 @@ function freshState() {
     seed: crypto.randomInt(0, 2 ** 31),
     originDay: currentChartDay(),
     lastGeneratedDay: null,
+    lastScheduledDay: null,
     releases: [],
     submissions: [],
     snapshots: [],

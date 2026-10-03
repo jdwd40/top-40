@@ -37,11 +37,9 @@ function createUserRelease(state, sub, day, rng) {
 
 function createRivalRelease(state, day, rng) {
   const catalogue = getCatalogue();
-  const free = catalogue.filter(s => !state.activeSongIds.includes(s.song_id));
+  const free = catalogue.filter(s => !s.legacy && !state.activeSongIds.includes(s.song_id));
   if (free.length === 0) return null; // catalogue exhausted; wait for retirements
-  const current = free.filter(s => !s.legacy);
-  const pool = current.length ? current : free;
-  const song = pool[Math.floor(rng() * pool.length)];
+  const song = free[Math.floor(rng() * free.length)];
   state.activeSongIds.push(song.song_id);
   return {
     releaseId: newReleaseId(state, 'rival'),
@@ -74,7 +72,7 @@ function releaseMetadata(release) {
 
 // Generate (or return the existing) snapshot for one chart day.
 // Mutates state; caller persists via the store lock.
-function generateForDay(state, day) {
+function generateForDay(state, day, { rivalCount = state.snapshots.length === 0 ? 40 : 1 } = {}) {
   const existing = state.snapshots.find(s => s.day === day);
   if (existing) return { snapshot: existing, created: false };
 
@@ -94,7 +92,6 @@ function generateForDay(state, day) {
   //    the catalogue is genuinely exhausted), so a new release can displace
   //    an existing chart entry through the normal retire lifecycle.
   const launch = state.snapshots.length === 0;
-  const rivalCount = launch ? 40 : 1;
   for (let i = 0; i < rivalCount; i++) {
     const rel = createRivalRelease(state, day, rng);
     if (rel) state.releases.push(rel);
@@ -171,16 +168,49 @@ function generateForDay(state, day) {
   return { snapshot, created: true };
 }
 
-// Catch up missed chart days in order, from the day after the last generated
-// day through today (Europe/London). Idempotent.
+// Explicit one-off upgrade, called only by the offline migration script.
+// Old releases remain in all-time totals and every published snapshot survives.
+function transitionCatalogue(state, now = new Date()) {
+  if (state.catalogueTransition) return { created: false };
+  const catalogue = getCatalogue();
+  const legacyIds = new Set(catalogue.filter(song => song.legacy).map(song => song.song_id));
+  const retiring = state.releases.filter(release => release.kind === 'rival' && !release.retired && legacyIds.has(release.songId));
+  if (!retiring.length) {
+    state.catalogueTransition = { day: state.lastGeneratedDay, retiredReleaseIds: [] };
+    return { created: false };
+  }
+  if (catalogue.filter(song => !song.legacy && !state.activeSongIds.includes(song.song_id)).length < 40) {
+    throw new Error('Catalogue transition needs 40 available current songs');
+  }
+  const latest = [state.lastGeneratedDay, ...state.snapshots.map(snapshot => snapshot.day)].filter(Boolean).sort().at(-1);
+  const day = latest ? addDays(latest, 1) : state.originDay;
+  for (const release of retiring) release.retired = true;
+  state.activeSongIds = state.activeSongIds.filter(id => !legacyIds.has(id));
+  const result = generateForDay(state, day, { rivalCount: 40 });
+  state.catalogueTransition = { day, retiredReleaseIds: retiring.map(release => release.releaseId) };
+  state.lastScheduledDay = currentChartDay(now);
+  return result;
+}
+
+// The wall-clock scheduling cursor is independent of the simulated chart day.
+// For old speed-up states, anchor today once; their past real-day offset is unknown.
 function catchUp(state, now = new Date()) {
   const today = currentChartDay(now);
   const results = [];
+  if (!state.lastScheduledDay) {
+    state.lastScheduledDay = state.lastGeneratedDay
+      ? (state.lastGeneratedDay > today ? today : state.lastGeneratedDay)
+      : addDays(state.originDay, -1);
+  }
+  let scheduledDay = addDays(state.lastScheduledDay, 1);
   let day = state.lastGeneratedDay ? addDays(state.lastGeneratedDay, 1) : state.originDay;
   let guard = 0;
-  while (day <= today && guard < 4000) {
+  while (scheduledDay <= today && guard < 4000) {
     results.push(generateForDay(state, day));
+    state.lastGeneratedDay = day; // also advance past an already-published day
+    state.lastScheduledDay = scheduledDay;
     day = addDays(day, 1);
+    scheduledDay = addDays(scheduledDay, 1);
     guard += 1;
   }
   return results;
@@ -303,4 +333,4 @@ function previewNext(state) {
   return { day, preview: true, snapshot };
 }
 
-module.exports = { generateForDay, catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext, RETIRE_SALES };
+module.exports = { generateForDay, transitionCatalogue, catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext, RETIRE_SALES };
