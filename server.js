@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Store } = require('./src/state');
-const { catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext } = require('./src/chart');
+const { catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext, releaseMetadata } = require('./src/chart');
 const { currentChartHour, nextBoundary } = require('./src/dates');
 const { GENRES } = require('./src/catalogue');
 const auth = require('./src/auth');
@@ -244,8 +244,8 @@ function createServer({ store, sessionSecret, autoCatchUp = true, clock = () => 
             if (e) history.push({ hour: snap.hour, rank: e.rank, hourlySales: e.hourlySales, cumulativeSales: e.cumulativeSales ?? null, hoursOnChart: e.hoursOnChart, peak: e.peak });
           }
           const rel = state.releases.find(r => r.releaseId === releaseId);
-          const meta = rel ? { title: rel.title, artist: rel.artist } :
-            (history.length ? (() => { const s = state.snapshots.find(sn => sn.entries.some(en => en.releaseId === releaseId)); const e = s.entries.find(en => en.releaseId === releaseId); return { title: e.title, artist: e.artist }; })() : null);
+          const meta = rel ? { title: rel.title, artist: rel.artist, genre: releaseMetadata(rel).genre } :
+            (history.length ? (() => { const s = state.snapshots.find(sn => sn.entries.some(en => en.releaseId === releaseId)); const e = s.entries.find(en => en.releaseId === releaseId); return { title: e.title, artist: e.artist, genre: releaseMetadata(e).genre }; })() : null);
           if (!meta) return json(res, 404, { error: 'release not found' });
           return json(res, 200, { releaseId, ...meta, history });
         });

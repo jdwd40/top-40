@@ -13,6 +13,7 @@ process.env.TOP40_ADMIN_PASSWORD = 'secret-pass';
 const { Store } = require('../src/state');
 const { createServer } = require('../server');
 const { addHours, nextBoundary, currentChartHour } = require('../src/dates');
+const { GENRES } = require('../src/catalogue');
 
 const sessionSecret = 'test-session-secret';
 const TEST_NOW = new Date('2026-10-03T12:37:42Z');
@@ -80,6 +81,7 @@ test('public chart payload shape and submission confirmation data', async (t) =>
   assert.equal(hist.status, 200);
   const h = JSON.parse(hist.text);
   assert.equal(h.releaseId, chart.entries[0].releaseId);
+  assert.ok(GENRES.includes(h.genre), 'history response carries the canonical genre');
   assert.ok(h.history.length >= 1);
   assert.ok('rank' in h.history[0] && 'hourlySales' in h.history[0]);
 

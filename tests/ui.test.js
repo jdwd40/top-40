@@ -24,7 +24,7 @@ function client(file = 'app.js', overrides = {}) {
     'api/state': { nextBoundary: '2026-10-03T17:00:00.000Z' },
     'api/chart/current': { chart },
     'api/chart/history': { snapshots: [chart] },
-    'api/release/REL-0001/history': { title: entry.title, artist: entry.artist, history: [{ hour: HOUR, ...entry }] },
+    'api/release/REL-0001/history': { title: entry.title, artist: entry.artist, genre: 'Rock', history: [{ hour: HOUR, ...entry }] },
     'api/submit': { submission: { expectedChartHour: '2026-10-03T17:00:00.000Z' } },
     'api/admin/state': { state: {} },
     'api/admin/releases': { releases: [] },
@@ -57,6 +57,24 @@ test('public chart and song history show London HH:mm/date context and hourly sa
   assert.match(history, /Hourly sales/);
   assert.match(history, /Hours on chart/);
   assert.doesNotMatch(chart + history, /week|Invalid Date/);
+});
+
+test('song view shows labelled genre, with and without chart history, escaped', async () => {
+  const ui = client();
+  await ui.run("showSong('REL-0001')");
+  assert.match(ui.element('#song-body').innerHTML, /Genre: Rock/);
+
+  const empty = client('app.js', { 'api/release/REL-0001/history': { title: 'T', artist: 'A', genre: 'Jazz', history: [] } });
+  await empty.run("showSong('REL-0001')");
+  const emptyHtml = empty.element('#song-body').innerHTML;
+  assert.match(emptyHtml, /Genre: Jazz/);
+  assert.match(emptyHtml, /not appeared on a published chart/);
+
+  const evil = client('app.js', { 'api/release/REL-0001/history': { title: 'T', artist: 'A', genre: 'Rock<script>', history: [] } });
+  await evil.run("showSong('REL-0001')");
+  const evilHtml = evil.element('#song-body').innerHTML;
+  assert.match(evilHtml, /Rock&lt;script&gt;/);
+  assert.doesNotMatch(evilHtml, /<script>/);
 });
 
 test('history groups London dates and distinguishes repeated DST hours using BST/GMT', async () => {
