@@ -51,10 +51,10 @@
         </section>
 
         <section id="av-preview" role="tabpanel" hidden>
-          <p class="hint">A hypothetical preview of the next chart day. It counts no sales, consumes no submissions and cannot publish.</p>
+          <p class="hint">A hypothetical preview of the next real chart hour. It counts no sales, consumes no submissions and cannot publish.</p>
           <button class="btn" id="run-preview" type="button">Build preview</button>
-          <button class="btn primary" id="run-generate" type="button" style="margin-left:0.5rem">Generate next chart now</button>
-          <button class="btn" id="run-speedup" type="button" style="margin-left:0.5rem">Speed up</button>
+          <button class="btn primary" id="run-generate" type="button" style="margin-left:0.5rem">Catch up elapsed hours</button>
+          <button class="btn" id="run-speedup" type="button" disabled title="Charts follow real UTC hours; future publication is disabled" style="margin-left:0.5rem">Speed up (disabled)</button>
           <div class="status" id="generate-status" role="status" aria-live="polite"></div>
           <div id="preview-body" style="margin-top:1rem"></div>
         </section>

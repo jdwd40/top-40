@@ -12,9 +12,10 @@ process.env.TOP40_ADMIN_PASSWORD = 'secret-pass';
 
 const { Store } = require('../src/state');
 const { createServer } = require('../server');
-const { addDays } = require('../src/dates');
+const { addHours, nextBoundary, currentChartHour } = require('../src/dates');
 
 const sessionSecret = 'test-session-secret';
+const TEST_NOW = new Date('2026-10-03T12:37:42Z');
 
 function request(server, method, p, { body, cookie } = {}) {
   const { port } = server.address();
@@ -35,13 +36,15 @@ function request(server, method, p, { body, cookie } = {}) {
   });
 }
 
-async function boot() {
+async function boot(autoCatchUp = true) {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'top40-admin-')), 'state.json');
   const store = new Store(file);
   await store.init();
-  const server = createServer({ store, sessionSecret });
+  let now = new Date(TEST_NOW);
+  await store.update(s => { s.originHour = currentChartHour(now); });
+  const server = createServer({ store, sessionSecret, autoCatchUp, clock: () => now });
   await new Promise((r) => server.listen(0, r));
-  return { store, server, file };
+  return { store, server, file, advanceHour: () => { now = new Date(addHours(currentChartHour(now), 1)); } };
 }
 
 async function login(server) {
@@ -60,10 +63,10 @@ test('public chart payload shape and submission confirmation data', async (t) =>
   const { chart } = JSON.parse(text);
   assert.ok(chart.entries.length > 0 && chart.entries.length <= 40);
   for (const e of chart.entries) {
-    for (const k of ['rank', 'releaseId', 'title', 'artist', 'weeklySales', 'cumulativeSales', 'weeksOnChart', 'peak', 'lastWeekRank']) {
+    for (const k of ['rank', 'releaseId', 'title', 'artist', 'hourlySales', 'cumulativeSales', 'hoursOnChart', 'peak', 'lastHourRank']) {
       assert.ok(k in e, `entry has ${k}`);
     }
-    assert.equal(typeof e.weeklySales, 'number');
+    assert.equal(typeof e.hourlySales, 'number');
     assert.equal(typeof e.cumulativeSales, 'number');
   }
 
@@ -71,14 +74,14 @@ test('public chart payload shape and submission confirmation data', async (t) =>
   assert.equal(sub.status, 201);
   const subData = JSON.parse(sub.text);
   assert.equal(subData.submission.status, 'pending');
-  assert.match(subData.submission.expectedChartDay, /^\d{4}-\d{2}-\d{2}$/, 'confirmation includes expected chart date');
+  assert.match(subData.submission.expectedChartHour, /^\d{4}-\d{2}-\d{2}T\d{2}:00:00\.000Z$/, 'confirmation includes expected chart date');
 
   const hist = await request(server, 'GET', `/api/release/${encodeURIComponent(chart.entries[0].releaseId)}/history`);
   assert.equal(hist.status, 200);
   const h = JSON.parse(hist.text);
   assert.equal(h.releaseId, chart.entries[0].releaseId);
   assert.ok(h.history.length >= 1);
-  assert.ok('rank' in h.history[0] && 'weeklySales' in h.history[0]);
+  assert.ok('rank' in h.history[0] && 'hourlySales' in h.history[0]);
 
   const missing = await request(server, 'GET', '/api/release/NOPE/history');
   assert.equal(missing.status, 404);
@@ -164,7 +167,7 @@ test('preview is pure: no publish, no lifetime sales, cannot mutate', async (t) 
   assert.equal(p1.status, 200);
   const d1 = JSON.parse(p1.text);
   assert.equal(d1.preview, true);
-  assert.match(d1.day, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(d1.hour, /^\d{4}-\d{2}-\d{2}T\d{2}:00:00\.000Z$/);
   assert.ok(d1.snapshot.entries.length > 0, 'preview has a full chart');
 
   assert.equal(store.state.snapshots.length, snapCount, 'no snapshot persisted');
@@ -173,19 +176,19 @@ test('preview is pure: no publish, no lifetime sales, cannot mutate', async (t) 
 
   const again = await request(server, 'POST', '/api/admin/preview', { cookie, body: {} });
   const d2 = JSON.parse(again.text);
-  assert.equal(d2.day, d1.day);
+  assert.equal(d2.hour, d1.hour);
   assert.deepEqual(d2.snapshot.entries, d1.snapshot.entries, 'preview chart content is deterministic');
 });
 
 test('preview on a stale generator publishes nothing (regression)', async (t) => {
-  const { server, store, file } = await boot();
+  const { server, store, file } = await boot(false);
   t.after(() => server.close());
   const cookie = await login(server);
 
   // Stale generator: origin two days behind, nothing generated, one pending sub.
   await store.update((s) => {
-    s.originDay = addDays(s.originDay, -2);
-    s.submissions.push({ id: 1, title: 'Stale Song', artist: 'B', submittedAt: '', status: 'pending', releaseId: null, expectedChartDay: s.originDay });
+    s.originHour = addHours(s.originHour, -2);
+    s.submissions.push({ id: 1, title: 'Stale Song', artist: 'B', submittedAt: '', status: 'pending', releaseId: null, expectedChartHour: s.originHour });
   });
   const diskBefore = fs.readFileSync(file, 'utf8');
   const snapsBefore = store.state.snapshots.length;
@@ -195,7 +198,7 @@ test('preview on a stale generator publishes nothing (regression)', async (t) =>
   assert.equal(res.status, 200);
   const d = JSON.parse(res.text);
   assert.equal(d.preview, true);
-  assert.equal(d.day, store.state.originDay, 'preview day is after the stale cursor, not today');
+  assert.equal(d.hour, nextBoundary(TEST_NOW).toISOString(), 'preview is the next real hour even when stale');
 
   assert.equal(store.state.snapshots.length, snapsBefore, 'no snapshots published');
   assert.equal(store.state.releases.length, 0, 'no releases created');
@@ -203,30 +206,31 @@ test('preview on a stale generator publishes nothing (regression)', async (t) =>
   assert.equal(sub.status, 'pending', 'submission not consumed');
   assert.equal(sub.releaseId, null);
   assert.equal(store.state.releases.reduce((n, r) => n + r.lifetimeSales, 0), lifeBefore, 'no lifetime sales added');
-  assert.equal(store.state.lastGeneratedDay, null, 'generator cursor unmoved');
+  assert.equal(store.state.lastGeneratedHour, null, 'generator cursor unmoved');
   assert.equal(fs.readFileSync(file, 'utf8'), diskBefore, 'state file on disk untouched');
 });
 
 test('generate after edits only affects future charts; published snapshot untouched', async (t) => {
-  const { server, store } = await boot();
+  const { server, store, advanceHour } = await boot();
   t.after(() => server.close());
   const cookie = await login(server);
 
   const current = JSON.parse((await request(server, 'GET', '/api/chart/current')).text).chart;
   const target = current.entries[0];
-  const publishedDay = current.day;
+  const publishedDay = current.hour;
 
   await request(server, 'PATCH', `/api/admin/release/${target.releaseId}`, { cookie, body: { title: 'Future Name', reason: 'display fix' } });
 
+  advanceHour();
   const gen = await request(server, 'POST', '/api/admin/generate', { cookie, body: {} });
   assert.equal(gen.status, 200);
 
   const history = JSON.parse((await request(server, 'GET', '/api/chart/history')).text).snapshots;
-  const old = history.find(s => s.day === publishedDay);
+  const old = history.find(s => s.hour === publishedDay);
   const oldEntry = old.entries.find(e => e.releaseId === target.releaseId);
   assert.equal(oldEntry.title, target.title, 'published snapshot keeps original title');
   const fresh = history[history.length - 1];
-  if (fresh.day !== publishedDay) {
+  if (fresh.hour !== publishedDay) {
     const newEntry = fresh.entries.find(e => e.releaseId === target.releaseId);
     if (newEntry) assert.equal(newEntry.title, 'Future Name', 'future charts use corrected title');
   }
@@ -256,7 +260,7 @@ test('delete submission and release with reason', async (t) => {
 });
 
 test('admin deletion hides a release and next chart replaces it', async (t) => {
-  const { server, store } = await boot();
+  const { server, store, advanceHour } = await boot();
   t.after(() => server.close());
   const noCookie = await request(server, 'POST', '/api/admin/release/REL-0001/delete', { body: { reason: 'remove test release' } });
   assert.equal(noCookie.status, 401);
@@ -273,7 +277,8 @@ test('admin deletion hides a release and next chart replaces it', async (t) => {
   assert.ok(!live.entries.some((entry) => entry.releaseId === target.releaseId));
   assert.equal(JSON.stringify(store.state.snapshots[store.state.snapshots.length - 1]), before);
   const releasesBefore = store.state.releases.length;
-  await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
+  advanceHour();
+  await request(server, 'POST', '/api/admin/generate', { cookie, body: {} });
   assert.ok(store.state.releases.length > releasesBefore);
   assert.ok(store.state.releases.some((release) => release.kind === 'rival' && release.releaseId !== target.releaseId));
 });

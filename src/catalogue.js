@@ -40,7 +40,7 @@ function parseCatalogue(markdown) {
     const cells = line.split('|').slice(1, -1).map(c => c.trim());
     if (cells.length < 4) continue;
     const [song_id, artist, rawGenre, title] = cells;
-    if (!/^SONG-\d{3}$/.test(song_id)) continue;
+    if (!/^SONG-\d{3,}$/.test(song_id)) continue;
     const bandId = cells[4] || bandIdFor(artist);
     const superBand = ['1', 'true', 'super'].includes((cells[5] || '').toLowerCase());
     const legacy = cells[6] === undefined ? true : !['0', 'false', 'current'].includes(cells[6].toLowerCase());

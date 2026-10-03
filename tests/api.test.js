@@ -12,8 +12,10 @@ process.env.TOP40_ADMIN_PASSWORD = 'secret-pass';
 
 const { Store } = require('../src/state');
 const { createServer } = require('../server');
+const { addHours, currentChartHour } = require('../src/dates');
 
 const sessionSecret = 'test-session-secret';
+const TEST_NOW = new Date('2026-10-03T12:37:42Z');
 
 function request(server, method, p, { body, cookie } = {}) {
   const { port } = server.address();
@@ -38,9 +40,11 @@ async function boot() {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'top40-api-')), 'state.json');
   const store = new Store(file);
   await store.init();
-  const server = createServer({ store, sessionSecret });
+  let now = new Date(TEST_NOW);
+  await store.update(s => { s.originHour = currentChartHour(now); });
+  const server = createServer({ store, sessionSecret, clock: () => now });
   await new Promise((r) => server.listen(0, r));
-  return { store, server, file };
+  return { store, server, file, advanceHour: () => { now = new Date(addHours(currentChartHour(now), 1)); } };
 }
 
 test('health, static index, and public chart with no mojo leak', async (t) => {
@@ -75,13 +79,15 @@ test('README documents admin access without credentials', () => {
 });
 
 test('submissions require a canonical genre and become super bands', async (t) => {
-  const { server, store } = await boot();
+  const { server, store, advanceHour } = await boot();
   t.after(() => server.close());
   const bad = await request(server, 'POST', '/api/submit', { body: { title: 'A', artist: 'B', genre: 'Opera' } });
   assert.equal(bad.status, 400);
   assert.equal(store.state.submissions.length, 0);
   const good = await request(server, 'POST', '/api/submit', { body: { title: 'A', artist: 'B', genre: 'Rock' } });
   assert.equal(good.status, 201);
+  assert.equal(store.state.submissions[0].status, 'pending');
+  advanceHour();
   await request(server, 'GET', '/api/chart/current');
   const release = store.state.releases.find((row) => row.kind === 'user');
   assert.equal(release.genre, 'Rock');
@@ -125,7 +131,7 @@ test('admin session boundary behind signed HttpOnly SameSite cookie', async (t) 
 
   const generate = await request(server, 'POST', '/api/admin/generate', { cookie, body: {} });
   assert.equal(generate.status, 200);
-  assert.ok(JSON.parse(generate.text).generated >= 1, 'admin generate catches up the current day');
+  assert.equal(JSON.parse(generate.text).generated, 0, 'startup tick already caught up; admin cannot advance into the future');
 
   const adminState = await request(server, 'GET', '/api/admin/state', { cookie });
   assert.equal(adminState.status, 200);

@@ -1,190 +1,134 @@
 'use strict';
-
+// The daily catalogue migration is deliberately replaced by an explicit backed-up hourly reset.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { Store, freshState } = require('../src/state');
-const { createServer } = require('../server');
-const { currentChartDay, chartDayStart, addDays } = require('../src/dates');
-const { generateForDay, transitionCatalogue, catchUp, currentSnapshot, allTime, genreTopTen, bandLeaderboard, previewNext } = require('../src/chart');
+const { catchUp, allTime, bandLeaderboard, genreTopTen, previewNext } = require('../src/chart');
+const { currentChartHour, addHours } = require('../src/dates');
 const { getCatalogue } = require('../src/catalogue');
-
-function legacyGame() {
-  const state = freshState();
-  state.seed = 42;
-  state.originDay = '2026-10-01';
-  generateForDay(state, '2026-10-16');
-  // Model the old generator's persisted records, not the new catalogue's launch.
-  const legacy = getCatalogue().filter(song => song.legacy);
-  state.releases.forEach((release, i) => {
-    const song = legacy[i];
-    Object.assign(release, { songId: song.song_id, title: song.title, artist: song.artist });
-    Object.assign(state.snapshots[0].entries.find(entry => entry.releaseId === release.releaseId), {
-      songId: song.song_id, title: song.title, artist: song.artist,
-    });
-  });
-  state.releases = state.releases.slice(0, 24);
-  state.snapshots[0].entries = state.snapshots[0].entries.filter(entry => state.releases.some(release => release.releaseId === entry.releaseId));
-  state.activeSongIds = state.releases.map(release => release.songId);
-  return state;
+const script = path.join(__dirname, '../scripts/reset-hourly.js');
+const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+function fixture(t) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'top40-reset-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'state.json');
+  const backup = path.join(dir, 'private', 'old-state.json');
+  const old = { version: 1, seed: 42, originDay: '2026-10-01', lastGeneratedDay: '2026-10-17',
+    releases: [{ releaseId: 'REL-0001', lifetimeSales: 123, songId: 'SONG-001' }],
+    snapshots: [{ day: '2026-10-17', entries: [{ releaseId: 'REL-0001', weeklySales: 123 }] }],
+    submissions: [{ id: 1, status: 'pending' }], activeSongIds: ['SONG-001'], corrections: [], counters: { release: 1, submission: 1 } };
+  const bytes = JSON.stringify(old, null, 2); fs.writeFileSync(file, bytes);
+  const args = [file, backup, hash(bytes), '--service-stopped'];
+  const run = (a = args) => spawnSync(process.execPath, [script, ...a], { encoding: 'utf8' });
+  return { dir, file, backup, bytes, args, run };
 }
 
-test('explicit catalogue transition retires legacy rivals and appends a realistic chart exactly once', () => {
-  const state = legacyGame();
-  const history = structuredClone(state.snapshots);
-  const oldReleases = structuredClone(state.releases);
-  const now = new Date('2026-10-03T21:00:00Z');
-  const result = transitionCatalogue(state, now);
+test('offline reset backs up exact daily bytes, clears this game and publishes four current songs at the real hour', async t => {
+  const { file, backup, bytes, run } = fixture(t);
+  const before = currentChartHour();
+  const r = run(); assert.equal(r.status, 0, r.stderr);
+  const result = JSON.parse(r.stdout);
   assert.equal(result.created, true);
-  assert.equal(result.snapshot.day, '2026-10-17');
-  assert.equal(result.snapshot.entries.length, 40);
-  assert.deepEqual(state.snapshots.slice(0, history.length), history);
-  oldReleases.forEach(old => {
-    assert.deepEqual(state.releases.find(release => release.releaseId === old.releaseId), { ...old, retired: true });
-    assert.ok(allTime(state).some(release => release.releaseId === old.releaseId));
-  });
-  const currentIds = new Set(getCatalogue().filter(song => !song.legacy).map(song => song.song_id));
-  assert.ok(currentSnapshot(state).entries.every(entry => currentIds.has(entry.songId)));
-  assert.ok(Object.values(genreTopTen(state)).flat().every(entry => currentIds.has(entry.songId)));
-  assert.ok(bandLeaderboard(state).some(band => band.bandName === oldReleases[0].artist));
-  assert.equal(new Set(state.activeSongIds).size, 40);
-  assert.ok(state.activeSongIds.every(id => currentIds.has(id)));
-  const after = structuredClone(state);
-  assert.equal(transitionCatalogue(state, now).created, false);
-  assert.deepEqual(state, after, 'retry does not advance, count sales or rewrite history');
-  previewNext(state);
-  assert.deepEqual(state, after, 'preview remains pure');
-});
-
-test('wall-clock catch-up advances a future simulated chart once per London day', () => {
-  const state = legacyGame();
-  const now = new Date('2026-10-03T21:00:00Z');
-  const snapshots = structuredClone(state.snapshots);
-  assert.deepEqual(catchUp(state, now), [], 'old future cursor is anchored, not replayed');
-  assert.equal(state.lastScheduledDay, '2026-10-03');
-  assert.equal(catchUp(state, new Date('2026-10-04T18:59:59Z')).length, 0, 'before London 20:00');
-  assert.equal(catchUp(state, new Date('2026-10-04T19:00:00Z')).length, 1);
-  assert.equal(state.lastGeneratedDay, '2026-10-17');
-  assert.equal(catchUp(state, new Date('2026-10-04T21:00:00Z')).length, 0);
-  assert.equal(catchUp(state, new Date('2026-10-07T21:00:00Z')).length, 3, 'missed real days replay once');
-  assert.equal(state.lastGeneratedDay, '2026-10-20');
-  assert.deepEqual(state.snapshots.slice(0, snapshots.length), snapshots);
-});
-
-test('offline migration persists, restarts and retries without changing a byte', async (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'top40-transition-'));
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const file = path.join(dir, 'state.json');
-  const state = legacyGame();
-  fs.writeFileSync(file, JSON.stringify(state, null, 2));
-  const script = path.join(__dirname, '../scripts/transition-catalogue.js');
-  const run = () => spawnSync(process.execPath, [script, file], { encoding: 'utf8' });
-  const first = run();
-  assert.equal(first.status, 0, first.stderr);
-  assert.equal(JSON.parse(first.stdout).created, true);
-  const bytes = fs.readFileSync(file, 'utf8');
-  const store = new Store(file);
-  await store.init();
-  assert.equal(store.state.lastGeneratedDay, '2026-10-17');
-  assert.deepEqual(store.state.snapshots[0], state.snapshots[0]);
-  const retry = run();
-  assert.equal(retry.status, 0, retry.stderr);
+  assert.equal(fs.readFileSync(backup, 'utf8'), bytes);
+  assert.equal(fs.statSync(backup).mode & 0o777, 0o600);
+  assert.equal(result.sourceSha256, hash(bytes));
+  const store = new Store(file); await store.init();
+  assert.equal(store.state.version, 2);
+  assert.ok([before, currentChartHour()].includes(store.state.originHour));
+  assert.equal(store.state.lastGeneratedHour, store.state.originHour);
+  assert.equal(store.state.snapshots.length, 1);
+  assert.equal(store.state.snapshots[0].entries.length, 4);
+  assert.equal(store.state.releases.length, 4);
+  assert.equal(store.state.submissions.length, 0);
+  assert.equal(store.state.corrections.length, 0);
+  assert.equal(allTime(store.state).length, 4);
+  assert.ok(bandLeaderboard(store.state).length <= 4);
+  assert.equal(Object.values(genreTopTen(store.state)).flat().length, 4);
+  const archive = new Set(getCatalogue().filter(s => s.legacy).map(s => s.song_id));
+  assert.ok(store.state.releases.every(r => !archive.has(r.songId)));
+  const bytesAfter = fs.readFileSync(file, 'utf8');
+  const retry = run(); assert.equal(retry.status, 0, retry.stderr);
   assert.equal(JSON.parse(retry.stdout).created, false);
-  assert.equal(fs.readFileSync(file, 'utf8'), bytes);
-  const missing = path.join(dir, 'missing.json');
-  assert.notEqual(spawnSync(process.execPath, [script, missing]).status, 0);
-  assert.equal(fs.existsSync(missing), false, 'migration must not create a new game');
-  for (const invalid of ['', 'not JSON', '{"version":2}']) {
-    fs.writeFileSync(file, invalid);
-    assert.notEqual(run().status, 0);
-    assert.equal(fs.readFileSync(file, 'utf8'), invalid, 'invalid state remains untouched');
+  assert.equal(fs.readFileSync(file, 'utf8'), bytesAfter, 'retry cannot reset a second time');
+  assert.equal(fs.readFileSync(backup, 'utf8'), bytes);
+  await store.update(s => catchUp(s, new Date(addHours(s.lastGeneratedHour, 1))));
+  const restart = new Store(file); await restart.init();
+  assert.equal(restart.state.snapshots.length, 2);
+  assert.equal(restart.state.releases.length, 8);
+});
+
+test('reset requires explicit absolute targets, original hash and stopped-writer acknowledgement', t => {
+  const { file, backup, bytes, args, run } = fixture(t);
+  for (const bad of [[], [file], args.slice(0, 3), [file, backup, '0'.repeat(64), '--service-stopped'], ['state.json', backup, args[2], '--service-stopped'], [file, file, args[2], '--service-stopped']]) {
+    const r = run(bad); assert.notEqual(r.status, 0, r.stdout);
+    assert.equal(fs.readFileSync(file, 'utf8'), bytes);
+    assert.equal(fs.existsSync(backup), false);
   }
-  assert.notEqual(spawnSync(process.execPath, [script], { env: { ...process.env, TOP40_DATA_FILE: missing } }).status, 0);
-  assert.equal(fs.existsSync(missing), false, 'no implicit default-file migration');
 });
 
-test('upgraded public flows preserve state, history and totals across restart and concurrent daily advancement', async (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'top40-transition-api-'));
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const file = path.join(dir, 'state.json');
-  fs.writeFileSync(file, JSON.stringify(legacyGame()));
-  const store = new Store(file);
-  await store.init();
-  await store.update(state => transitionCatalogue(state));
+test('reset refuses missing, empty, corrupt and unsupported state without changing files', t => {
+  const { dir, file, backup, args, run } = fixture(t);
+  const missing = path.join(dir, 'missing.json');
+  assert.notEqual(run([missing, backup, args[2], '--service-stopped']).status, 0);
+  assert.equal(fs.existsSync(missing), false);
+  for (const invalid of ['', 'not JSON', '{"version":3}', '{"version":1}', '{"version":2}']) {
+    fs.writeFileSync(file, invalid);
+    assert.notEqual(run([file, backup, hash(invalid), '--service-stopped']).status, 0);
+    assert.equal(fs.readFileSync(file, 'utf8'), invalid);
+    assert.equal(fs.existsSync(backup), false);
+  }
+});
+
+test('reset never overwrites a backup or touches unrelated databases; public backups and symlinks are refused', t => {
+  const { dir, file, backup, bytes, args, run } = fixture(t);
+  const unrelated = path.join(dir, 'other-game.json'); fs.writeFileSync(unrelated, 'KEEP');
+  fs.mkdirSync(path.dirname(backup)); fs.writeFileSync(backup, 'EXISTING');
+  assert.notEqual(run().status, 0);
+  assert.equal(fs.readFileSync(backup, 'utf8'), 'EXISTING');
+  assert.equal(fs.readFileSync(file, 'utf8'), bytes);
+  assert.equal(fs.readFileSync(unrelated, 'utf8'), 'KEEP');
+  const publicBackup = path.join(__dirname, '../public/reset-test-backup.json');
+  assert.notEqual(run([file, publicBackup, args[2], '--service-stopped']).status, 0);
+  assert.equal(fs.existsSync(publicBackup), false);
+  const linked = path.join(dir, 'linked-state.json'); fs.symlinkSync(file, linked);
+  assert.notEqual(run([linked, path.join(dir, 'new-backup.json'), args[2], '--service-stopped']).status, 0);
+  assert.equal(fs.readFileSync(file, 'utf8'), bytes);
+});
+
+test('v2 restarts, concurrent advancement, pure preview and archived metadata preserve published hourly snapshots', async t => {
+  const { file } = fixture(t);
+  const state = freshState(new Date('2026-10-03T12:00:00Z')); state.seed = 42;
+  catchUp(state, new Date('2026-10-03T14:30:00Z'));
+  fs.writeFileSync(file, JSON.stringify(state, null, 2));
+  const store = new Store(file); await store.init();
   const before = structuredClone(store.state);
-  const bytes = fs.readFileSync(file, 'utf8');
-  const server = createServer({ store, sessionSecret: 'test-only' });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => new Promise(resolve => server.close(resolve)));
-  const base = `http://127.0.0.1:${server.address().port}`;
-  const get = async route => {
-    const response = await fetch(base + route);
-    assert.equal(response.status, 200, route);
-    const text = await response.text();
-    assert.ok(!text.includes('mojo'), route);
-    return JSON.parse(text);
-  };
-  const [current, genres, history, totals, bands, releaseHistory] = await Promise.all([
-    '/api/chart/current', '/api/chart/genres', '/api/chart/history', '/api/chart/all-time', '/api/chart/bands',
-    `/api/release/${before.releases[0].releaseId}/history`,
-  ].map(get));
-  // HTTP responses are sent inside Store.update, before its final persist.
-  // Finish that writer before inspecting disk or opening a restarted Store.
-  await store.queue;
-  const legacyIds = new Set(getCatalogue().filter(song => song.legacy).map(song => song.song_id));
-  assert.equal(current.chart.entries.length, 40);
-  assert.ok(current.chart.entries.every(entry => !legacyIds.has(entry.songId)));
-  assert.ok(Object.values(genres.genres).flat().every(entry => !legacyIds.has(entry.songId)));
-  assert.ok(history.snapshots[0].entries.some(entry => legacyIds.has(entry.songId)));
-  assert.equal(totals.allTime.length, 64);
-  assert.ok(bands.bands.length);
-  assert.equal(releaseHistory.history.length, 1);
+  previewNext(store.state, new Date('2026-10-03T14:30:00Z'));
   assert.deepEqual(store.state, before);
-  assert.equal(fs.readFileSync(file, 'utf8'), bytes, 'public reads are byte-preserving after upgrade');
-  const restart = new Store(file);
-  await restart.init();
-  const tomorrow = chartDayStart(addDays(currentChartDay(), 1));
-  const results = await Promise.all(Array.from({ length: 4 }, () => restart.update(state => catchUp(state, tomorrow))));
-  assert.equal(results.flat().filter(result => result.created).length, 1);
-  assert.equal(restart.state.lastGeneratedDay, '2026-10-18');
-  assert.deepEqual(restart.state.snapshots.slice(0, before.snapshots.length), before.snapshots);
+  const results = await Promise.all(Array.from({ length: 4 }, () => store.update(s => catchUp(s, new Date('2026-10-03T15:00:00Z')))));
+  assert.equal(results.flat().filter(r => r.created).length, 1);
+  assert.deepEqual(store.state.snapshots.slice(0, 3), before.snapshots);
+  const restarted = new Store(file); await restarted.init();
+  assert.deepEqual(restarted.state, store.state);
 });
 
-test('transition preserves existing user releases and debuts pending submissions normally', () => {
-  const state = legacyGame();
-  state.releases[0].kind = 'user';
-  state.releases[0].songId = null;
-  const id = state.releases[0].releaseId;
-  state.submissions.push({ id: 1, title: 'A New Day', artist: 'User Band', genre: 'Rock', status: 'pending' });
-  const result = transitionCatalogue(state, new Date('2026-10-03T21:00:00Z'));
-  assert.equal(result.created, true);
-  assert.equal(state.releases.find(release => release.releaseId === id).retired, false);
-  assert.equal(state.submissions[0].status, 'released');
-  assert.equal(state.releases.find(release => release.releaseId === state.submissions[0].releaseId).kind, 'user');
-  assert.equal(state.catalogueTransition.retiredReleaseIds.length, 23);
+test('catalogue exhaustion never resurrects archived songs', () => {
+  const state = freshState(new Date('2026-10-03T12:00:00Z'));
+  state.activeSongIds = getCatalogue().filter(s => !s.legacy).map(s => s.song_id);
+  catchUp(state, new Date('2026-10-03T13:00:00Z'));
+  assert.equal(state.releases.length, 0);
+  assert.ok(state.snapshots.every(s => s.entries.length === 0));
 });
 
-test('current-song exhaustion never resurrects legacy songs and transition preflight is non-mutating', () => {
-  const state = legacyGame();
-  state.activeSongIds.push(...getCatalogue().filter(song => !song.legacy).map(song => song.song_id));
-  const before = structuredClone(state);
-  assert.throws(() => transitionCatalogue(state), /40 available current songs/);
-  assert.deepEqual(state, before);
-  const count = state.releases.length;
-  generateForDay(state, '2026-10-17');
-  assert.equal(state.releases.length, count, 'no fallback to old joke releases');
-});
-
-test('already realistic games need no new chart and repeated transition remains a no-op', () => {
-  const state = freshState();
-  generateForDay(state, state.originDay);
-  const snapshots = structuredClone(state.snapshots);
-  assert.equal(transitionCatalogue(state).created, false);
-  assert.deepEqual(state.snapshots, snapshots);
-  const after = structuredClone(state);
-  assert.equal(transitionCatalogue(state).created, false);
-  assert.deepEqual(state, after);
+test('obsolete daily transition script refuses any migration instead of introducing future charts', t => {
+  const { file, bytes } = fixture(t);
+  const oldScript = path.join(__dirname, '../scripts/transition-catalogue.js');
+  const r = spawnSync(process.execPath, [oldScript, file], { encoding: 'utf8' });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /reset-hourly/);
+  assert.equal(fs.readFileSync(file, 'utf8'), bytes);
 });

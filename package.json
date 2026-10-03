@@ -2,7 +2,7 @@
   "name": "ridiculous-top-40",
   "version": "0.1.0",
   "private": true,
-  "description": "Daily fictional Top 40 chart simulation (Europe/London chart days)",
+  "description": "Real-time hourly fictional Top 40 chart simulation (UTC buckets, London display)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

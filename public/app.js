@@ -5,8 +5,11 @@
 const $ = (sel) => document.querySelector(sel);
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fmt = new Intl.NumberFormat('en-GB');
-const fmtDay = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' });
-const fmtDayShort = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
+const fmtDay = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short', timeZone: 'Europe/London' });
+const fmtDayShort = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short', timeZone: 'Europe/London' });
+
+const fmtDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
+const fmtTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short', timeZone: 'Europe/London' });
 
 function announce(msg) { $('#live').textContent = msg; }
 
@@ -21,9 +24,9 @@ function esc(s) {
 }
 
 function movementHtml(e) {
-  if (e.lastWeekRank === null || e.lastWeekRank === undefined) return '<span class="badge new">NEW</span>';
+  if (e.lastHourRank === null || e.lastHourRank === undefined) return '<span class="badge new">NEW</span>';
   if (e.reentry) return '<span class="badge reentry">RE-ENTRY</span>';
-  const d = e.lastWeekRank - e.rank;
+  const d = e.lastHourRank - e.rank;
   if (d > 0) return `<span class="mv up" title="up ${d}">&#9650; ${d}</span>`;
   if (d < 0) return `<span class="mv down" title="down ${-d}">&#9660; ${-d}</span>`;
   return '<span class="mv same" title="no change">&#8212;</span>';
@@ -40,15 +43,15 @@ function chartHtml(snap) {
         </button>
       </span>
       <span class="stats">
-        <span class="sales">${fmt.format(e.weeklySales)} sold this week</span>
-        <span class="sub">${e.cumulativeSales != null ? fmt.format(e.cumulativeSales) + ' total · ' : ''}peak ${e.peak} · ${e.weeksOnChart} wk${e.weeksOnChart === 1 ? '' : 's'}</span>
+        <span class="sales">${fmt.format(e.hourlySales)} sold this hour</span>
+        <span class="sub">${e.cumulativeSales != null ? fmt.format(e.cumulativeSales) + ' total · ' : ''}peak ${e.peak} · ${e.hoursOnChart} hour${e.hoursOnChart === 1 ? '' : 's'} on chart</span>
       </span>
     </li>`).join('');
-  return `<p class="hint" style="margin-top:0">Chart for <strong>${fmtDay.format(new Date(snap.day + 'T12:00:00Z'))}</strong></p>
+  return `<p class="hint" style="margin-top:0">Chart for <strong>${fmtDay.format(new Date(snap.hour))}</strong></p>
     <ol class="chartlist">${items}</ol>`;
 }
 
-// ---- reveal animation (40 -> 1), skippable, once per chart day per browser ----
+// ---- reveal animation (40 -> 1), skippable, once per chart hour per browser ----
 let revealTimer = null;
 function revealEntries(listEl, day) {
   clearInterval(revealTimer);
@@ -113,12 +116,12 @@ async function loadCurrent() {
       announce('No chart has been published yet.');
       return;
     }
-    $('#chartdate').textContent = fmtDayShort.format(new Date(snap.day + 'T12:00:00Z'));
+    $('#chartdate').textContent = fmtDayShort.format(new Date(snap.hour));
     const list = $('#chartlist');
     list.innerHTML = chartHtml(snap);
     $('#chart-offline').hidden = true;
-    revealEntries(list, snap.day);
-    announce(`Chart for ${fmtDayShort.format(new Date(snap.day + 'T12:00:00Z'))} loaded, ${snap.entries.length} entries.`);
+    revealEntries(list, snap.hour);
+    announce(`Chart for ${fmtDayShort.format(new Date(snap.hour))} loaded, ${snap.entries.length} entries.`);
   } catch {
     $('#chartlist').innerHTML = '';
     $('#chart-offline').hidden = false;
@@ -135,16 +138,22 @@ async function loadHistory() {
       $('#history-chart').innerHTML = '';
       return;
     }
-    list.innerHTML = snapshots.map((s) => `<li><button type="button" class="btn small" data-day="${esc(s.day)}">${fmtDayShort.format(new Date(s.day + 'T12:00:00Z'))}</button></li>`).join('');
+    let previousDate = null;
+    list.innerHTML = snapshots.map((s) => {
+      const date = fmtDate.format(new Date(s.hour));
+      const heading = date !== previousDate ? `<li class="history-date">${esc(date)}</li>` : '';
+      previousDate = date;
+      return `${heading}<li><button type="button" class="btn small" data-day="${esc(s.hour)}" aria-label="${esc(fmtDayShort.format(new Date(s.hour)))}">${fmtTime.format(new Date(s.hour))}</button></li>`;
+    }).join('');
     $('#history-offline').hidden = true;
     list.querySelectorAll('button').forEach((b) => {
       b.addEventListener('click', () => {
-        const snap = snapshots.find((s) => s.day === b.dataset.day);
+        const snap = snapshots.find((s) => s.hour === b.dataset.day);
         const host = $('#history-chart');
         host.innerHTML = chartHtml(snap);
         host.querySelectorAll('.chartlist > li').forEach((li) => li.classList.add('shown'));
         bindSongLinks(host);
-        announce(`Showing chart for ${fmtDayShort.format(new Date(snap.day + 'T12:00:00Z'))}.`);
+        announce(`Showing chart for ${fmtDayShort.format(new Date(snap.hour))}.`);
       });
     });
   } catch {
@@ -159,8 +168,8 @@ async function loadAllTime() {
       $('#alltime-body').innerHTML = '<p class="hint">Nothing here yet.</p>';
       return;
     }
-    $('#alltime-body').innerHTML = `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Title</th><th scope="col">Artist</th><th scope="col">Total sales</th><th scope="col">Peak</th><th scope="col">Weeks</th></tr></thead><tbody>${
-      allTime.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.title)}</td><td>${esc(r.artist)}</td><td>${fmt.format(r.lifetimeSales)}</td><td>${r.peak ?? '—'}</td><td>${r.weeksOnChart}</td></tr>`).join('')
+    $('#alltime-body').innerHTML = `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Title</th><th scope="col">Artist</th><th scope="col">Total sales</th><th scope="col">Peak</th><th scope="col">Hours on chart</th></tr></thead><tbody>${
+      allTime.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.title)}</td><td>${esc(r.artist)}</td><td>${fmt.format(r.lifetimeSales)}</td><td>${r.peak ?? '—'}</td><td>${r.hoursOnChart}</td></tr>`).join('')
     }</tbody></table>`;
     $('#alltime-offline').hidden = true;
   } catch {
@@ -171,7 +180,7 @@ async function loadAllTime() {
 async function loadGenres() {
   try {
     const { genres } = await getJson('/api/chart/genres');
-    const cards = Object.entries(genres).map(([genre, rows]) => `<section class="panel"><h3>${esc(genre)}</h3>${rows.length ? `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Song</th><th scope="col">Band</th><th scope="col">Peak</th></tr></thead><tbody>${rows.slice(0, 10).map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.title)}<br><span class="hint">${fmt.format(r.weeklySales)} this week</span></td><td>${esc(r.bandName || r.artist)}</td><td>${r.peak ?? '—'}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">No chart entries yet.</p>'}</section>`).join('');
+    const cards = Object.entries(genres).map(([genre, rows]) => `<section class="panel"><h3>${esc(genre)}</h3>${rows.length ? `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Song</th><th scope="col">Band</th><th scope="col">Peak</th></tr></thead><tbody>${rows.slice(0, 10).map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.title)}<br><span class="hint">${fmt.format(r.hourlySales)} this hour</span></td><td>${esc(r.bandName || r.artist)}</td><td>${r.peak ?? '—'}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">No chart entries yet.</p>'}</section>`).join('');
     $('#genres-body').innerHTML = cards;
     $('#genres-offline').hidden = true;
     announce('Genre Top 10s loaded.');
@@ -183,7 +192,7 @@ async function loadGenres() {
 async function loadBands() {
   try {
     const { bands } = await getJson('/api/chart/bands');
-    $('#bands-body').innerHTML = bands.length ? `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Band</th><th scope="col">Earnings</th><th scope="col">Sales</th><th scope="col">Releases</th><th scope="col">Best peak</th><th scope="col">Weeks</th></tr></thead><tbody>${bands.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.bandName)}${b.superBand ? ' <span class="badge">SUPER BAND</span>' : ''}<br><span class="hint">${esc(b.genres.join(', '))}</span></td><td>£${Number(b.earnings).toFixed(2)}</td><td>${fmt.format(b.lifetimeSales)}</td><td>${b.releaseCount}</td><td>${b.bestPeak ?? '—'}</td><td>${b.totalWeeks}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">No band earnings yet.</p>';
+    $('#bands-body').innerHTML = bands.length ? `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Band</th><th scope="col">Earnings</th><th scope="col">Sales</th><th scope="col">Releases</th><th scope="col">Best peak</th><th scope="col">Hours on chart</th></tr></thead><tbody>${bands.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.bandName)}${b.superBand ? ' <span class="badge">SUPER BAND</span>' : ''}<br><span class="hint">${esc(b.genres.join(', '))}</span></td><td>£${Number(b.earnings).toFixed(2)}</td><td>${fmt.format(b.lifetimeSales)}</td><td>${b.releaseCount}</td><td>${b.bestPeak ?? '—'}</td><td>${b.totalHours}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">No band earnings yet.</p>';
     $('#bands-offline').hidden = true;
     announce('Band leaderboard loaded.');
   } catch {
@@ -201,8 +210,8 @@ async function showSong(releaseId) {
       $('#song-body').innerHTML = '<p class="hint">This release has not appeared on a published chart.</p>';
       return;
     }
-    $('#song-body').innerHTML = `<table class="data"><thead><tr><th scope="col">Chart date</th><th scope="col">Rank</th><th scope="col">Weekly sales</th><th scope="col">Cumulative</th><th scope="col">Weeks on</th></tr></thead><tbody>${
-      d.history.map((h) => `<tr><td>${fmtDayShort.format(new Date(h.day + 'T12:00:00Z'))}</td><td>${h.rank}</td><td>${fmt.format(h.weeklySales)}</td><td>${h.cumulativeSales != null ? fmt.format(h.cumulativeSales) : '—'}</td><td>${h.weeksOnChart}</td></tr>`).join('')
+    $('#song-body').innerHTML = `<table class="data"><thead><tr><th scope="col">Chart time (London)</th><th scope="col">Rank</th><th scope="col">Hourly sales</th><th scope="col">Cumulative</th><th scope="col">Hours on chart</th></tr></thead><tbody>${
+      d.history.map((h) => `<tr><td>${fmtDayShort.format(new Date(h.hour))}</td><td>${h.rank}</td><td>${fmt.format(h.hourlySales)}</td><td>${h.cumulativeSales != null ? fmt.format(h.cumulativeSales) : '—'}</td><td>${h.hoursOnChart}</td></tr>`).join('')
     }</tbody></table>`;
     announce(`Chart history for ${d.title} by ${d.artist}.`);
   } catch {
@@ -249,7 +258,7 @@ function initSubmit() {
         return;
       }
       status.className = 'status ok';
-      status.textContent = `Submitted! "${title}" by ${artist} will debut on the chart for ${fmtDayShort.format(new Date(data.submission.expectedChartDay + 'T12:00:00Z'))}.`;
+      status.textContent = `Submitted! "${title}" by ${artist} will debut on the chart for ${fmtDayShort.format(new Date(data.submission.expectedChartHour))}.`;
       form.reset();
       announce('Song submitted successfully.');
     } catch {

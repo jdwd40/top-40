@@ -9,8 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Store } = require('./src/state');
-const { catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext, generateForDay } = require('./src/chart');
-const { currentChartDay, nextBoundary, addDays } = require('./src/dates');
+const { catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext } = require('./src/chart');
+const { currentChartHour, nextBoundary } = require('./src/dates');
 const { GENRES } = require('./src/catalogue');
 const auth = require('./src/auth');
 
@@ -79,12 +79,12 @@ function rateLimit(key, max, windowMs) {
   return hit.n <= max;
 }
 
-function publicState(state) {
+function publicState(state, now) {
   return {
-    currentDay: currentChartDay(),
-    nextBoundary: nextBoundary().toISOString(),
-    originDay: state.originDay,
-    lastGeneratedDay: state.lastGeneratedDay,
+    currentHour: currentChartHour(now),
+    nextBoundary: nextBoundary(now).toISOString(),
+    originHour: state.originHour,
+    lastGeneratedHour: state.lastGeneratedHour,
     releaseCount: state.releases.length,
     activeCatalogueSongs: state.activeSongIds.length,
     submissionCount: state.submissions.length,
@@ -161,13 +161,13 @@ function serveStatic(req, res, urlPath) {
   });
 }
 
-function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
+function createServer({ store, sessionSecret, autoCatchUp = true, clock = () => new Date(), tickMs = 1000 } = {}) {
   const adminCreds = auth.adminCredentials();
   const rateScope = crypto.randomUUID();
   const revoked = new Set(); // logout denylist, in-memory per process
 
   async function ensureFresh(state) {
-    if (autoCatchUp) catchUp(state);
+    if (autoCatchUp) catchUp(state, clock());
   }
 
   const server = http.createServer(async (req, res) => {
@@ -176,12 +176,12 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
     try {
       // ---- public API ----
       if (req.method === 'GET' && p === '/health') {
-        return json(res, 200, { ok: true, day: currentChartDay() });
+        return json(res, 200, { ok: true, hour: currentChartHour(clock()) });
       }
       if (req.method === 'GET' && p === '/api/state') {
         return await store.update(async (state) => {
           await ensureFresh(state);
-          return json(res, 200, publicState(state));
+          return json(res, 200, publicState(state, clock()));
         });
       }
       if (req.method === 'GET' && p === '/api/chart/current') {
@@ -222,23 +222,26 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
         const body = await readJson(req);
         const v = validateSubmission(body);
         if (v.error) return json(res, 400, { error: v.error });
-        const sub = await store.update((state) => {
+        const sub = await store.update(async (state) => {
+          await ensureFresh(state);
+          const now = clock();
           state.counters.submission += 1;
-          const entry = { id: state.counters.submission, title: v.title, artist: v.artist, genre: v.genre, superBand: true, submittedAt: new Date().toISOString(), status: 'pending', releaseId: null };
+          const entry = { id: state.counters.submission, title: v.title, artist: v.artist, genre: v.genre, superBand: true, submittedAt: now.toISOString(), status: 'pending', releaseId: null };
           state.submissions.push(entry);
-          // The submission debuts on the very next chart that gets generated.
-          entry.expectedChartDay = state.lastGeneratedDay ? addDays(state.lastGeneratedDay, 1) : state.originDay;
+          // Always the next real hour, even when the generator is stale.
+          entry.expectedChartHour = nextBoundary(now).toISOString();
           return entry;
         });
-        return json(res, 201, { ok: true, submission: { id: sub.id, status: sub.status, genre: sub.genre, superBand: true, expectedChartDay: sub.expectedChartDay } });
+        return json(res, 201, { ok: true, submission: { id: sub.id, status: sub.status, genre: sub.genre, superBand: true, expectedChartHour: sub.expectedChartHour } });
       }
       if (req.method === 'GET' && p.startsWith('/api/release/') && p.endsWith('/history')) {
         const releaseId = decodeURIComponent(p.slice('/api/release/'.length, -'/history'.length));
         return await store.update(async (state) => {
+          await ensureFresh(state);
           const history = [];
           for (const snap of state.snapshots) {
             const e = snap.entries.find(en => en.releaseId === releaseId);
-            if (e) history.push({ day: snap.day, rank: e.rank, weeklySales: e.weeklySales, cumulativeSales: e.cumulativeSales ?? null, weeksOnChart: e.weeksOnChart, peak: e.peak });
+            if (e) history.push({ hour: snap.hour, rank: e.rank, hourlySales: e.hourlySales, cumulativeSales: e.cumulativeSales ?? null, hoursOnChart: e.hoursOnChart, peak: e.peak });
           }
           const rel = state.releases.find(r => r.releaseId === releaseId);
           const meta = rel ? { title: rel.title, artist: rel.artist } :
@@ -285,29 +288,11 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
           return res.end(JSON.stringify({ ok: true }));
         }
         if (req.method === 'POST' && p === '/api/admin/generate') {
-          const results = await store.update(async (state) => catchUp(state));
+          const results = await store.update(async (state) => catchUp(state, clock()));
           return json(res, 200, { ok: true, generated: results.filter(r => r.created).length });
         }
         if (req.method === 'POST' && p === '/api/admin/speedup') {
-          // Advance exactly one simulated chart week: the day after the last
-          // generated day, through the same idempotent generation path as
-          // catch-up. Never runs wall-clock catch-up, so one click = one day.
-          const summary = await store.update(async (state) => {
-            const prevSnapshot = state.snapshots.length ? state.snapshots[state.snapshots.length - 1] : null;
-            const day = state.lastGeneratedDay ? addDays(state.lastGeneratedDay, 1) : state.originDay;
-            const { snapshot, created } = generateForDay(state, day);
-            state.lastScheduledDay ||= currentChartDay();
-            if (!created) {
-              return { ok: true, created: false, day: snapshot.day, entries: snapshot.entries.length, added: 0, released: 0, departed: 0 };
-            }
-            const prevIds = new Set(prevSnapshot ? prevSnapshot.entries.map(e => e.releaseId) : []);
-            const nowIds = new Set(snapshot.entries.map(e => e.releaseId));
-            const departed = [...prevIds].filter(id => !nowIds.has(id)).length;
-            const added = state.releases.filter(r => r.kind === 'rival' && r.releasedDay === day).length;
-            const released = state.releases.filter(r => r.kind === 'user' && r.releasedDay === day).length;
-            return { ok: true, created: true, day, entries: snapshot.entries.length, added, released, departed };
-          });
-          return json(res, 200, summary);
+          return json(res, 409, { error: 'Speed-up disabled: charts follow real UTC hours only' });
         }
         if (req.method === 'GET' && p === '/api/admin/state') {
           return await store.update(async (state) => json(res, 200, { state }));
@@ -316,7 +301,7 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
           return await store.update(async (state) => json(res, 200, {
             releases: state.releases.map(r => ({
               releaseId: r.releaseId, kind: r.kind, songId: r.songId, title: r.title, artist: r.artist,
-              releasedDay: r.releasedDay, weeksOnChart: r.weeksOnChart, peak: r.peak,
+              releasedHour: r.releasedHour, hoursOnChart: r.hoursOnChart, peak: r.peak,
               lifetimeSales: r.lifetimeSales, retired: r.retired, mojo: r.mojo,
             })),
           }));
@@ -331,7 +316,7 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
           // Pure read: no catch-up, no persist. previewNext structured-clones
           // state, so nothing it computes can publish, consume submissions, or
           // add lifetime sales.
-          return json(res, 200, previewNext(store.state));
+          return json(res, 200, previewNext(store.state, clock()));
         }
         const releaseMatch = p.match(/^\/api\/admin\/release\/([^/]+)(\/delete)?$/);
         if (releaseMatch && (req.method === 'PATCH' || req.method === 'POST')) {
@@ -387,13 +372,32 @@ function createServer({ store, sessionSecret, autoCatchUp = true } = {}) {
       return json(res, err.status || 500, { error: err.message || 'internal error' });
     }
   });
+  // ponytail: one process owns the JSON file; use a database lock if scaling writers.
+  let timer = null;
+  let ticking = false;
+  async function tick() {
+    if (ticking || !autoCatchUp) return;
+    const now = clock();
+    if (store.state.lastGeneratedHour && store.state.lastGeneratedHour >= currentChartHour(now)) return;
+    ticking = true;
+    try { await store.update(state => catchUp(state, now)); }
+    catch (error) { console.error('Hourly chart tick failed:', error); }
+    finally { ticking = false; }
+  }
+  server.on('listening', () => {
+    if (!autoCatchUp) return;
+    tick();
+    timer = setInterval(tick, tickMs);
+    timer.unref();
+  });
+  server.on('close', () => { clearInterval(timer); timer = null; });
   return server;
 }
 
 async function main() {
   const store = new Store();
   await store.init();
-  await store.update((state) => catchUp(state)); // missed-day catch-up on boot
+  await store.update((state) => catchUp(state)); // missed-hour catch-up on boot
   const port = Number(process.env.TOP40_PORT || 3000);
   const sessionSecret = auth.secret();
   const server = createServer({ store, sessionSecret });
