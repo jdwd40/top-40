@@ -206,11 +206,12 @@ async function showSong(releaseId) {
     switchView(null);
     $('#view-song').hidden = false;
     $('#song-heading').textContent = `${d.title} — ${d.artist}`;
+    const genreHtml = `<p class="hint">Genre: ${esc(d.genre)}</p>`;
     if (!d.history.length) {
-      $('#song-body').innerHTML = '<p class="hint">This release has not appeared on a published chart.</p>';
+      $('#song-body').innerHTML = `${genreHtml}<p class="hint">This release has not appeared on a published chart.</p>`;
       return;
     }
-    $('#song-body').innerHTML = `<table class="data"><thead><tr><th scope="col">Chart time (London)</th><th scope="col">Rank</th><th scope="col">Hourly sales</th><th scope="col">Cumulative</th><th scope="col">Hours on chart</th></tr></thead><tbody>${
+    $('#song-body').innerHTML = `${genreHtml}<table class="data"><thead><tr><th scope="col">Chart time (London)</th><th scope="col">Rank</th><th scope="col">Hourly sales</th><th scope="col">Cumulative</th><th scope="col">Hours on chart</th></tr></thead><tbody>${
       d.history.map((h) => `<tr><td>${fmtDayShort.format(new Date(h.hour))}</td><td>${h.rank}</td><td>${fmt.format(h.hourlySales)}</td><td>${h.cumulativeSales != null ? fmt.format(h.cumulativeSales) : '—'}</td><td>${h.hoursOnChart}</td></tr>`).join('')
     }</tbody></table>`;
     announce(`Chart history for ${d.title} by ${d.artist}.`);

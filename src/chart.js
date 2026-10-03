@@ -297,4 +297,4 @@ function previewNext(state, now = new Date()) {
   return { hour, preview: true, snapshot };
 }
 
-module.exports = { generateForHour, catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext, RETIRE_SALES };
+module.exports = { generateForHour, catchUp, allTime, bandLeaderboard, genreTopTen, publicSnapshot, currentSnapshot, previewNext, releaseMetadata, RETIRE_SALES };
