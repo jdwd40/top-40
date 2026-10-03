@@ -1,167 +1,130 @@
 'use strict';
-
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const http = require('http');
-
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 process.env.TOP40_ADMIN_USER = 'tester';
 process.env.TOP40_ADMIN_PASSWORD = 'secret-pass';
-
 const { Store } = require('../src/state');
 const { createServer } = require('../server');
-const { currentChartDay, addDays, chartDayStart } = require('../src/dates');
+const { addHours } = require('../src/dates');
 const { catchUp } = require('../src/chart');
+const START = '2026-10-03T12:00:00.000Z';
 
-const sessionSecret = 'test-session-secret';
-
-function request(server, method, p, { body, cookie } = {}) {
-  const { port } = server.address();
-  return new Promise((resolve, reject) => {
-    const data = body === undefined ? null : JSON.stringify(body);
-    const req = http.request({ port, path: p, method, headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      ...(cookie ? { Cookie: cookie } : {}),
-      ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
-    } }, (res) => {
-      let text = '';
-      res.on('data', (c) => { text += c; });
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, text }));
-    });
-    req.on('error', reject);
-    if (data) req.write(data);
-    req.end();
-  });
-}
-
-async function boot() {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'top40-speedup-')), 'state.json');
-  const store = new Store(file);
+async function boot(t, { automatic = false } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'top40-realtime-'));
+  const store = new Store(path.join(dir, 'state.json'));
   await store.init();
-  const server = createServer({ store, sessionSecret, autoCatchUp: false });
-  await new Promise((r) => server.listen(0, r));
-  return { store, server, file };
-}
-
-async function login(server) {
-  const ok = await request(server, 'POST', '/api/admin/login', { body: { username: 'tester', password: 'secret-pass' } });
-  assert.equal(ok.status, 200);
-  return ok.headers['set-cookie'][0].split(';')[0];
-}
-
-test('speed up rejects unauthenticated requests', async (t) => {
-  const { server } = await boot();
-  t.after(() => server.close());
-  const res = await request(server, 'POST', '/api/admin/speedup', { body: {} });
-  assert.equal(res.status, 401);
-  assert.match(res.text, /admin session required/);
-});
-
-test('speed up advances exactly one chart week per call and persists across restart', async (t) => {
-  const { server, store, file } = await boot();
-  t.after(() => server.close());
-  const cookie = await login(server);
-  const originDay = store.state.originDay;
-
-  const r1 = await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
-  assert.equal(r1.status, 200);
-  const d1 = JSON.parse(r1.text);
-  assert.equal(d1.ok, true);
-  assert.equal(d1.created, true);
-  assert.equal(d1.day, originDay, 'first speed-up publishes the launch chart');
-  assert.equal(d1.entries, 40);
-  assert.equal(d1.added, 40, 'launch seeds 40 rivals');
-  assert.equal(d1.released, 0);
-  assert.equal(d1.departed, 0);
-  assert.equal(store.state.lastScheduledDay, currentChartDay(), 'speed-up establishes the real-day cursor');
-
-  const r2 = await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
-  assert.equal(r2.status, 200);
-  const d2 = JSON.parse(r2.text);
-  assert.equal(d2.day, addDays(originDay, 1), 'second call advances exactly one day');
-  assert.equal(d2.entries, 40);
-  assert.equal(d2.added, 1, 'exactly one new rival release');
-  assert.ok(Number.isInteger(d2.departed) && d2.departed >= 0 && d2.departed <= 1);
-
-  // summary departed count matches the actual snapshot diff
-  const snaps = store.state.snapshots;
-  const prevIds = new Set(snaps[snaps.length - 2].entries.map(e => e.releaseId));
-  const nowIds = new Set(snaps[snaps.length - 1].entries.map(e => e.releaseId));
-  assert.equal(d2.departed, [...prevIds].filter(id => !nowIds.has(id)).length, 'departed count matches snapshots');
-
-  const r3 = await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
-  const d3 = JSON.parse(r3.text);
-  assert.equal(d3.day, addDays(originDay, 2), 'third call advances one more day');
-  assert.equal(store.state.snapshots.length, 3);
-
-  const store2 = new Store(file);
-  await store2.init();
-  assert.equal(store2.state.snapshots.length, 3, 'snapshots retained on restart');
-  assert.equal(store2.state.lastGeneratedDay, addDays(originDay, 2), 'generator cursor retained');
-  assert.equal(store2.state.lastScheduledDay, currentChartDay(), 'speed-up leaves the scheduling cursor unchanged');
-  const tomorrow = chartDayStart(addDays(currentChartDay(), 1));
-  const daily = await store2.update(state => catchUp(state, tomorrow));
-  assert.equal(daily.filter(result => result.created).length, 1, 'daily advancement works after speed-up and restart');
-  assert.equal(store2.state.lastGeneratedDay, addDays(originDay, 3));
-});
-
-test('speed up generates exactly one day even when the generator is behind', async (t) => {
-  const { server, store } = await boot();
-  t.after(() => server.close());
-  const cookie = await login(server);
-  await store.update((s) => {
-    s.originDay = addDays(currentChartDay(), -5);
-    s.lastGeneratedDay = null;
-    s.snapshots = [];
-    s.releases = [];
-    s.activeSongIds = [];
-    s.counters.release = 0;
-  });
-  const res = await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
-  assert.equal(res.status, 200);
-  const d = JSON.parse(res.text);
-  assert.equal(d.created, true);
-  assert.equal(d.day, addDays(currentChartDay(), -5));
-  assert.equal(store.state.snapshots.length, 1, 'no catch-up cascade: exactly one day published');
-});
-
-test('speed up releases pending user submissions on the new chart day', async (t) => {
-  const { server, store } = await boot();
-  t.after(() => server.close());
-  const cookie = await login(server);
-
-  const sub = await request(server, 'POST', '/api/submit', { body: { title: 'Speed Tune', artist: 'Fast Act', genre: 'Rock' } });
-  assert.equal(sub.status, 201);
-
-  const res = await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
-  assert.equal(res.status, 200);
-  const d = JSON.parse(res.text);
-  assert.equal(d.released, 1, 'one pending submission released');
-  assert.equal(d.entries, 40, 'chart ranks the top 40 of launch rivals + user debut');
-  const released = store.state.submissions.find(s => s.title === 'Speed Tune');
-  assert.equal(released.status, 'released');
-  assert.ok(released.releaseId, 'submission linked to its release');
-});
-
-test('speed up does not move the Europe/London wall clock', async (t) => {
-  const { server } = await boot();
-  t.after(() => server.close());
-  const cookie = await login(server);
-  const before = currentChartDay();
-  await request(server, 'POST', '/api/admin/speedup', { cookie, body: {} });
-  const health = await request(server, 'GET', '/health');
-  assert.equal(JSON.parse(health.text).day, before, 'server clock view unchanged');
-  assert.equal(currentChartDay(), before);
-});
-
-test('branding: public and admin pages say Tripper City Top 40', async (t) => {
-  const { server } = await boot();
-  t.after(() => server.close());
-  for (const p of ['/', '/admin.html']) {
-    const res = await request(server, 'GET', p);
-    assert.equal(res.status, 200);
-    assert.match(res.text, /Tripper City Top 40/, `${p} carries the new brand`);
+  await store.update(state => { state.originHour = START; });
+  let now = new Date('2026-10-03T12:37:42Z');
+  const server = createServer({ store, sessionSecret: 'test-only', clock: () => now, autoCatchUp: automatic, tickMs: 10 });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); await store.queue; fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  async function request(route, { method = 'GET', cookie, body } = {}) {
+    const response = await fetch(base + route, { method, headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
+    return { status: response.status, headers: response.headers, text: await response.text() };
   }
+  async function login() {
+    const r = await request('/api/admin/login', { method: 'POST', body: { username: 'tester', password: 'secret-pass' } });
+    assert.equal(r.status, 200);
+    return r.headers.get('set-cookie').split(';')[0];
+  }
+  return { store, request, login, setNow: value => { now = new Date(value); } };
+}
+
+test('speed up rejects unauthenticated requests', async t => {
+  const { request } = await boot(t);
+  assert.equal((await request('/api/admin/speedup', { method: 'POST', body: {} })).status, 401);
+});
+
+test('speed up returns 409 without changing state or disk, including after restart', async t => {
+  const { store, request, login } = await boot(t);
+  const cookie = await login();
+  const before = fs.readFileSync(store.file, 'utf8');
+  for (let i = 0; i < 3; i++) {
+    const r = await request('/api/admin/speedup', { method: 'POST', cookie, body: {} });
+    assert.equal(r.status, 409);
+    assert.match(r.text, /real.*hour/i);
+  }
+  await store.queue;
+  assert.equal(fs.readFileSync(store.file, 'utf8'), before);
+  const restarted = new Store(store.file); await restarted.init();
+  assert.deepEqual(restarted.state, store.state);
+});
+
+test('admin generate catches up elapsed hours only and same-hour retries are no-ops', async t => {
+  const { store, request, login, setNow } = await boot(t);
+  const cookie = await login();
+  const generate = async () => JSON.parse((await request('/api/admin/generate', { method: 'POST', cookie, body: {} })).text);
+  assert.equal((await generate()).generated, 1);
+  assert.equal(store.state.snapshots[0].entries.length, 4);
+  assert.equal((await generate()).generated, 0);
+  setNow('2026-10-03T15:59:59Z');
+  assert.equal((await generate()).generated, 3);
+  assert.equal(store.state.lastGeneratedHour, addHours(START, 3));
+  assert.equal((await generate()).generated, 0);
+  await store.queue;
+  const restart = new Store(store.file); await restart.init();
+  assert.equal((await restart.update(s => catchUp(s, new Date(addHours(START, 4))))).length, 1);
+});
+
+test('submission debuts next real hour, never backdated during catch-up or released by speed-up', async t => {
+  const { store, request, login, setNow } = await boot(t);
+  const cookie = await login();
+  const r = await request('/api/submit', { method: 'POST', body: { title: 'Northern Sky', artist: 'User Band', genre: 'Rock' } });
+  assert.equal(r.status, 201);
+  assert.equal(JSON.parse(r.text).submission.expectedChartHour, addHours(START, 1));
+  await request('/api/admin/speedup', { method: 'POST', cookie, body: {} });
+  assert.equal(store.state.submissions[0].status, 'pending');
+  await request('/api/admin/generate', { method: 'POST', cookie, body: {} });
+  assert.equal(store.state.submissions[0].status, 'pending');
+  setNow(addHours(START, 2));
+  await request('/api/admin/generate', { method: 'POST', cookie, body: {} });
+  const user = store.state.releases.find(r => r.kind === 'user');
+  assert.equal(user.releasedHour, addHours(START, 1));
+  assert.equal(user.genre, 'Rock');
+  assert.equal(user.superBand, true);
+});
+
+test('health reports the real UTC hour, not a simulated future date', async t => {
+  const { request, setNow } = await boot(t);
+  assert.equal(JSON.parse((await request('/health')).text).hour, START);
+  setNow('2026-10-03T13:11:00Z');
+  assert.equal(JSON.parse((await request('/health')).text).hour, addHours(START, 1));
+});
+
+test('periodic server tick advances without traffic and remains exactly once under concurrent reads', async t => {
+  const { store, request, setNow } = await boot(t, { automatic: true });
+  async function waitForHour(hour) {
+    const deadline = Date.now() + 2000;
+    while (store.state.lastGeneratedHour !== hour && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+    await store.queue;
+    assert.equal(store.state.lastGeneratedHour, hour);
+  }
+  await waitForHour(START);
+  setNow(addHours(START, 1));
+  await waitForHour(addHours(START, 1)); // no HTTP request advanced this
+  const before = structuredClone(store.state);
+  await Promise.all(Array.from({ length: 8 }, () => request('/api/chart/current')));
+  await store.queue;
+  assert.deepEqual(store.state, before);
+  assert.equal(store.state.snapshots.length, 2);
+  setNow(addHours(START, 4));
+  await waitForHour(addHours(START, 4));
+  assert.equal(store.state.snapshots.length, 5);
+});
+
+test('branding and controls describe hourly real-time behavior', async t => {
+  const { request } = await boot(t);
+  for (const route of ['/', '/admin.html']) {
+    const r = await request(route);
+    assert.equal(r.status, 200);
+    assert.match(r.text, /Tripper City Top 40/);
+    assert.doesNotMatch(r.text, /8pm|daily|next chart day|Generate next chart now/);
+  }
+  const admin = (await request('/admin.html')).text;
+  assert.match(admin, /id="run-speedup"[^>]*disabled/);
+  assert.match(admin, /elapsed hours/);
 });

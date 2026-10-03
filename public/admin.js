@@ -4,7 +4,7 @@
 
 const $ = (s) => document.querySelector(s);
 const fmt = new Intl.NumberFormat('en-GB');
-const fmtDay = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
+const fmtDay = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short', timeZone: 'Europe/London' });
 
 function announce(msg) { $('#live').textContent = msg; }
 function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -66,14 +66,14 @@ async function loadReleases() {
   $('#releases-list').innerHTML = data.releases.map((r) => `
     <details class="rel-row">
       <summary><span class="mono">${esc(r.releaseId)}</span> ${esc(r.title)} — ${esc(r.artist)}
-        <span class="rel-meta">· ${r.kind}${r.retired ? ' · retired' : ''} · ${fmt.format(r.lifetimeSales)} total · peak ${r.peak ?? '—'}</span></summary>
+        <span class="rel-meta">· ${r.kind}${r.retired ? ' · retired' : ''} · ${fmt.format(r.lifetimeSales)} total · peak ${r.peak ?? '—'} · ${r.hoursOnChart} hours on chart · released ${fmtDay.format(new Date(r.releasedHour))}</span></summary>
       <details class="editarea">
         <summary>Edit metadata / mojo</summary>
         <form class="edit-form" data-id="${esc(r.releaseId)}" novalidate>
           <label>Title <input type="text" name="title" value="${esc(r.title)}" maxlength="80" required></label>
           <label>Artist <input type="text" name="artist" value="${esc(r.artist)}" maxlength="80" required></label>
           <fieldset style="border:1px solid var(--line);border-radius:var(--radius);margin:0.8rem 0;padding:0.6rem">
-            <legend class="hint">Mojo (0–1; shapes future weekly sales only)</legend>
+            <legend class="hint">Mojo (0–1; shapes future hourly sales only)</legend>
             <div class="mojo-grid">${['potential', 'debut', 'climb', 'plateau', 'decline', 'variation'].map((k) => `
               <label>${k}<input type="number" name="${k}" min="0" max="1" step="0.01" value="${r.mojo[k]}"></label>`).join('')}
             </div>
@@ -130,8 +130,8 @@ async function loadSubmissions() {
   const { status, data } = await api('GET', '/api/admin/submissions');
   if (status !== 200) { $('#submissions-list').innerHTML = '<p class="status err">Failed to load submissions.</p>'; return; }
   if (!data.submissions.length) { $('#submissions-list').innerHTML = '<p class="hint">No submissions yet.</p>'; return; }
-  $('#submissions-list').innerHTML = `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Title</th><th scope="col">Artist</th><th scope="col">Status</th><th scope="col">Submitted</th><th scope="col"></th></tr></thead><tbody>${
-    data.submissions.map((s) => `<tr><td>${s.id}</td><td>${esc(s.title)}</td><td>${esc(s.artist)}</td><td>${esc(s.status)}</td><td>${new Date(s.submittedAt).toLocaleString('en-GB')}</td><td>${
+  $('#submissions-list').innerHTML = `<table class="data"><thead><tr><th scope="col">#</th><th scope="col">Title</th><th scope="col">Artist</th><th scope="col">Status</th><th scope="col">Submitted (London)</th><th scope="col">Expected debut (London)</th><th scope="col"></th></tr></thead><tbody>${
+    data.submissions.map((s) => `<tr><td>${s.id}</td><td>${esc(s.title)}</td><td>${esc(s.artist)}</td><td>${esc(s.status)}</td><td>${fmtDay.format(new Date(s.submittedAt))}</td><td>${s.expectedChartHour ? fmtDay.format(new Date(s.expectedChartHour)) : '—'}</td><td>${
       s.status === 'pending' ? `<button class="btn danger small" data-del-sub="${s.id}" type="button">Delete</button>` : ''
     }</td></tr>`).join('')
   }</tbody></table><div class="status" id="sub-status" role="status" aria-live="polite"></div>`;
@@ -154,7 +154,7 @@ async function loadCorrections() {
   if (status !== 200) { $('#corrections-list').innerHTML = '<p class="status err">Failed to load the log.</p>'; return; }
   if (!data.corrections.length) { $('#corrections-list').innerHTML = '<p class="hint">No corrections recorded.</p>'; return; }
   $('#corrections-list').innerHTML = `<table class="data"><thead><tr><th scope="col">When</th><th scope="col">Admin</th><th scope="col">Type</th><th scope="col">Ref</th><th scope="col">Reason</th></tr></thead><tbody>${
-    data.corrections.map((c) => `<tr><td>${new Date(c.at).toLocaleString('en-GB')}</td><td>${esc(c.admin)}</td><td>${esc(c.type)}</td><td class="mono">${esc(c.refId)}</td><td>${esc(c.reason)}</td></tr>`).join('')
+    data.corrections.map((c) => `<tr><td>${fmtDay.format(new Date(c.at))}</td><td>${esc(c.admin)}</td><td>${esc(c.type)}</td><td class="mono">${esc(c.refId)}</td><td>${esc(c.reason)}</td></tr>`).join('')
   }</tbody></table>`;
 }
 
@@ -165,11 +165,11 @@ $('#run-preview').addEventListener('click', async () => {
   const { status, data } = await api('POST', '/api/admin/preview', {});
   if (status !== 200) { host.innerHTML = `<p class="status err">${esc(data.error || `HTTP ${status}`)}</p>`; return; }
   const s = data.snapshot;
-  host.innerHTML = `<p class="hint">Hypothetical chart for <strong>${fmtDay.format(new Date(data.day + 'T12:00:00Z'))}</strong> (preview — nothing published, no sales counted).</p>
-    <table class="data"><thead><tr><th scope="col">#</th><th scope="col">Title</th><th scope="col">Artist</th><th scope="col">Weekly sales</th></tr></thead><tbody>${
-    s.entries.map((e) => `<tr><td>${e.rank}</td><td>${esc(e.title)}</td><td>${esc(e.artist)}</td><td>${fmt.format(e.weeklySales)}</td></tr>`).join('')
+  host.innerHTML = `<p class="hint">Hypothetical chart for <strong>${fmtDay.format(new Date(data.hour))}</strong> (preview — nothing published, no sales counted).</p>
+    <table class="data"><thead><tr><th scope="col">#</th><th scope="col">Title</th><th scope="col">Artist</th><th scope="col">Hourly sales</th></tr></thead><tbody>${
+    s.entries.map((e) => `<tr><td>${e.rank}</td><td>${esc(e.title)}</td><td>${esc(e.artist)}</td><td>${fmt.format(e.hourlySales)}</td></tr>`).join('')
   }</tbody></table>`;
-  announce(`Preview for ${data.day} built.`);
+  announce(`Preview for ${data.hour} built.`);
 });
 
 $('#run-generate').addEventListener('click', async () => {
@@ -177,18 +177,7 @@ $('#run-generate').addEventListener('click', async () => {
   box.className = 'status';
   const { status, data } = await api('POST', '/api/admin/generate', {});
   box.className = status === 200 ? 'status ok' : 'status err';
-  box.textContent = status === 200 ? `Generated ${data.generated} new chart day(s).` : (data.error || `HTTP ${status}`);
-  if (status === 200) { loadReleases(); loadSubmissions(); }
-});
-
-$('#run-speedup').addEventListener('click', async () => {
-  const box = $('#generate-status');
-  box.className = 'status';
-  const { status, data } = await api('POST', '/api/admin/speedup', {});
-  box.className = status === 200 ? 'status ok' : 'status err';
-  box.textContent = status === 200
-    ? `Speed up: chart ${data.day} published — ${data.entries} entries, ${data.added} rival(s) added, ${data.released} user release(s), ${data.departed} departed.`
-    : (data.error || `HTTP ${status}`);
+  box.textContent = status === 200 ? `Generated ${data.generated} elapsed chart hour(s).` : (data.error || `HTTP ${status}`);
   if (status === 200) { loadReleases(); loadSubmissions(); }
 });
 
@@ -197,4 +186,4 @@ $('#run-speedup').addEventListener('click', async () => {
   const { status } = await api('GET', '/api/admin/state');
   if (status === 200) { showAdmin(); loadReleases(); loadSubmissions(); loadCorrections(); }
   else showLogin();
-})();
+})().catch(showLogin);

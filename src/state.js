@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { currentChartDay } = require('./dates');
+const { currentChartHour, hourDiff } = require('./dates');
 
 const DEFAULT_FILE = path.join(__dirname, '..', 'data', 'state.json');
 
@@ -14,13 +14,13 @@ function dataFile() {
   return process.env.TOP40_DATA_FILE || DEFAULT_FILE;
 }
 
-function freshState() {
+function freshState(now = new Date()) {
   return {
-    version: 1,
+    version: 2,
     seed: crypto.randomInt(0, 2 ** 31),
-    originDay: currentChartDay(),
-    lastGeneratedDay: null,
-    lastScheduledDay: null,
+    originHour: currentChartHour(now),
+    lastGeneratedHour: null,
+    chartFilled: false,
     releases: [],
     submissions: [],
     snapshots: [],
@@ -28,6 +28,28 @@ function freshState() {
     corrections: [],
     counters: { release: 0, submission: 0 },
   };
+}
+
+function validateState(state) {
+  hourDiff(state.originHour, state.originHour);
+  if (state.lastGeneratedHour) hourDiff(state.originHour, state.lastGeneratedHour);
+  for (const key of ['releases', 'submissions', 'snapshots', 'activeSongIds', 'corrections']) {
+    if (!Array.isArray(state[key])) throw new Error(`Invalid v2 state: ${key}`);
+  }
+  if (!state.counters || !['release', 'submission'].every(key => Number.isInteger(state.counters[key]) && state.counters[key] >= 0) ||
+      !Number.isInteger(state.seed) || typeof state.chartFilled !== 'boolean') {
+    throw new Error('Invalid v2 state metadata');
+  }
+  for (const release of state.releases) hourDiff(state.originHour, release.releasedHour);
+  for (const sub of state.submissions) {
+    if (sub.status === 'pending') hourDiff(state.originHour, sub.expectedChartHour);
+  }
+  const hours = new Set();
+  for (const snapshot of state.snapshots) {
+    hourDiff(state.originHour, snapshot.hour);
+    if (hours.has(snapshot.hour) || !Array.isArray(snapshot.entries)) throw new Error('Invalid v2 snapshots');
+    hours.add(snapshot.hour);
+  }
 }
 
 async function saveAtomic(file, state) {
@@ -57,12 +79,16 @@ class Store {
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;
     }
-    if (raw === null || raw.trim() === '') {
+    if (raw === null) {
       this.state = freshState();
       await this._persist();
     } else {
-      this.state = JSON.parse(raw); // throws on corrupt file: fail loudly, do not silently reset
-      if (!this.state || this.state.version !== 1) throw new Error(`Unsupported state version in ${this.file}`);
+      if (!raw.trim()) throw new Error(`Empty state file: ${this.file}; refusing automatic reset`);
+      this.state = JSON.parse(raw); // corrupt data fails loudly; never reset on boot
+      if (!this.state || this.state.version !== 2) {
+        throw new Error(`Unsupported state version in ${this.file}; use scripts/reset-hourly.js explicitly with the service stopped`);
+      }
+      validateState(this.state);
     }
     return this.state;
   }
@@ -76,9 +102,15 @@ class Store {
   // concurrent callers are safe and every mutation hits disk before returning.
   update(fn) {
     const run = this.queue.then(async () => {
-      const result = await fn(this.state);
-      await this._persist();
-      return result;
+      const before = structuredClone(this.state);
+      try {
+        const result = await fn(this.state);
+        await this._persist();
+        return result;
+      } catch (error) {
+        this.state = before; // failed ticks must remain retryable, without counted sales
+        throw error;
+      }
     });
     // Keep the chain alive even if a write fails; store the rejection for the
     // caller but don't poison later updates with an unhandled rejection.

@@ -29,7 +29,7 @@ function mulberry32(seed) {
 const VARIANTS = ['spike', 'steady', 'short hit', 'burner', 'long decline'];
 const USER_VARIANTS = ['spike', 'burner', 'spike', 'steady', 'burner', 'short hit', 'long decline']; // weighted: users skew hit-shaped
 const BASE_SALES = 60000;
-const NOISE_WEEKS = 80;
+const NOISE_HOURS = 80;
 
 function makeMojo(rng, kind, superBand = false) {
   if (superBand) {
@@ -41,12 +41,12 @@ function makeMojo(rng, kind, superBand = false) {
       decline: 0.92 + rng() * 0.08,
       variation: rng() * 0.2,
       variant: 'super band',
-      noise: Array.from({ length: NOISE_WEEKS }, () => rng()),
+      noise: Array.from({ length: NOISE_HOURS }, () => rng()),
     };
   }
   // User submissions sample a potential band overlapping the rivals', so they
-  // have a real shot at the Top 10 without it being guaranteed. Weekly noise
-  // and variant curves (incl. short hit) still decide individual weeks.
+  // have a real shot at the Top 10 without it being guaranteed. Hourly noise
+  // and variant curves (incl. short hit) still decide individual hours.
   const potential = kind === 'user' ? 0.25 + rng() * 0.7 : rng() * 0.95;
   return {
     potential,
@@ -56,33 +56,33 @@ function makeMojo(rng, kind, superBand = false) {
     decline: rng(),
     variation: rng(),
     variant: (kind === 'user' ? USER_VARIANTS : VARIANTS)[Math.floor(rng() * (kind === 'user' ? USER_VARIANTS : VARIANTS).length)],
-    noise: Array.from({ length: NOISE_WEEKS }, () => rng()),
+    noise: Array.from({ length: NOISE_HOURS }, () => rng()),
   };
 }
 
-// Weekly sales for week index w (0 = debut week). Pure function of the
+// Hourly sales for hour index w (0 = debut hour). Pure function of the
 // persisted mojo, so replays are exact.
-function weeklySales(release, w) {
+function hourlySales(release, w) {
   const m = release.mojo;
   const peak = 0.35 + m.potential * 1.15;
-  let climbWeeks = 1 + Math.round(m.climb * 6);   // 1..7
-  let plateauWeeks = Math.round(m.plateau * 5);   // 0..5
-  let retain = 0.5 + m.decline * 0.45;            // 0.50..0.95 weekly retention
+  let climbHours = 1 + Math.round(m.climb * 6);   // 1..7
+  let plateauHours = Math.round(m.plateau * 5);   // 0..5
+  let retain = 0.5 + m.decline * 0.45;            // 0.50..0.95 hourly retention
   switch (m.variant) {
-    case 'super band': climbWeeks = 1 + Math.round(m.climb * 3); plateauWeeks = 5 + Math.round(m.plateau * 4); retain = 0.92 + m.decline * 0.06; break;
-    case 'spike': climbWeeks = Math.min(climbWeeks, 2); plateauWeeks = Math.min(plateauWeeks, 1); retain = Math.min(retain, 0.55); break;
-    case 'short hit': climbWeeks = Math.min(climbWeeks, 1); plateauWeeks = Math.min(plateauWeeks, 1); retain = 0.35; break;
-    case 'steady': plateauWeeks += 3; retain = Math.max(retain, 0.8); break;
-    case 'burner': climbWeeks += 2; plateauWeeks += 2; break;
-    case 'long decline': plateauWeeks += 1; retain = Math.max(retain, 0.88); break;
+    case 'super band': climbHours = 1 + Math.round(m.climb * 3); plateauHours = 5 + Math.round(m.plateau * 4); retain = 0.92 + m.decline * 0.06; break;
+    case 'spike': climbHours = Math.min(climbHours, 2); plateauHours = Math.min(plateauHours, 1); retain = Math.min(retain, 0.55); break;
+    case 'short hit': climbHours = Math.min(climbHours, 1); plateauHours = Math.min(plateauHours, 1); retain = 0.35; break;
+    case 'steady': plateauHours += 3; retain = Math.max(retain, 0.8); break;
+    case 'burner': climbHours += 2; plateauHours += 2; break;
+    case 'long decline': plateauHours += 1; retain = Math.max(retain, 0.88); break;
   }
   let f;
-  if (w < climbWeeks) f = (0.25 + 0.75 * (w + 1) / climbWeeks) * peak;
-  else if (w < climbWeeks + plateauWeeks) f = peak;
-  else f = peak * Math.pow(retain, w - climbWeeks - plateauWeeks);
+  if (w < climbHours) f = (0.25 + 0.75 * (w + 1) / climbHours) * peak;
+  else if (w < climbHours + plateauHours) f = peak;
+  else f = peak * Math.pow(retain, w - climbHours - plateauHours);
   if (w === 0) f *= 0.5 + m.debut * 0.7;
   f *= 1 + (m.noise[Math.min(w, m.noise.length - 1)] - 0.5) * m.variation * 0.8;
   return Math.max(0, Math.round(BASE_SALES * f));
 }
 
-module.exports = { hashSeed, mulberry32, makeMojo, weeklySales, VARIANTS };
+module.exports = { hashSeed, mulberry32, makeMojo, hourlySales, VARIANTS };
